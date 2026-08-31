@@ -39,6 +39,10 @@ export default function AdminPanel() {
       <header className="mb-10">
         <h1 className="text-3xl font-bold text-red-500">Panel de Administrador</h1>
         <p className="text-gray-400 mt-2">Área restringida. Manejo de base de datos y configuraciones.</p>
+        <div className="flex gap-4 mt-6">
+          <a href="/admin/inventario" className="text-blue-400 hover:text-blue-300 font-medium">Gestionar Inventario</a>
+          <a href="/admin/recetas" className="text-blue-400 hover:text-blue-300 font-medium">Gestionar Recetas</a>
+        </div>
       </header>
 
       <main className="flex flex-col gap-8">

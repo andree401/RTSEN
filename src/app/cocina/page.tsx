@@ -1,74 +1,65 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 type Comanda = {
   id: string;
   mesa: string;
-  items: { nombre: string; notas?: string }[];
-  tiempo: number;
+  items: { nombre: string; notas?: string; cantidad?: number }[];
+  tiempo: number; // en minutos
+  created_at: string;
 };
 
 export default function CocinaKDS() {
   const [comandas, setComandas] = useState<Comanda[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Mock inicial para ver el KDS en acción
-    const mock: Comanda[] = [
-      { 
-        id: '101', 
-        mesa: 'Mesa 4', 
-        tiempo: 15, 
-        items: [
-          { nombre: '2x Tacos al Pastor', notas: '¡SIN CEBOLLA POR FAVOR!' }, 
-          { nombre: '1x Guacamole', notas: 'Extra totopos' }
-        ] 
-      },
-      { 
-        id: '102', 
-        mesa: 'Mesa 2', 
-        tiempo: 8, 
-        items: [
-          { nombre: '1x Hamburguesa Doble', notas: 'Término medio, rápido' }
-        ] 
-      },
-      { 
-        id: '103', 
-        mesa: 'Barra', 
-        tiempo: 2, 
-        items: [
-          { nombre: '3x Margaritas' },
-          { nombre: '1x Nachos Supremos' }
-        ] 
-      },
-    ];
-    setComandas(mock);
+  const fetchComandas = async () => {
+    const { data, error } = await supabase
+      .from('comandas')
+      .select('*, comandas_items(*)')
+      .eq('estado', 'pendiente');
+      
+    if (data && !error) {
+      const now = new Date().getTime();
+      const formatted = data.map((d: any) => ({
+        id: d.id,
+        mesa: d.mesa,
+        items: d.comandas_items || [],
+        created_at: d.created_at || new Date().toISOString(),
+        tiempo: Math.floor((now - new Date(d.created_at || now).getTime()) / 60000)
+      }));
+      setComandas(formatted);
+    }
+  };
 
-    // Sistema temporal para recibir comandas (dispatch event de otras pestañas/componentes)
-    const handleNuevaComanda = (e: CustomEvent) => {
-      if (e.detail) {
-        setComandas(prev => [...prev, e.detail]);
-      }
-    };
+  useEffect(() => {
+    fetchComandas();
     
-    window.addEventListener('nueva-comanda', handleNuevaComanda as EventListener);
+    const interval = setInterval(() => {
+      setComandas(prev => prev.map(c => ({
+        ...c,
+        tiempo: Math.floor((new Date().getTime() - new Date(c.created_at).getTime()) / 60000)
+      })));
+    }, 60000); // Update time every minute
     
-    // Y también por localStorage si es entre pestañas
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'nueva_comanda_kds' && e.newValue) {
-        setComandas(prev => [...prev, JSON.parse(e.newValue!)]);
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    
+    // Suscripción a Supabase
+    const subscription = supabase
+      .channel('comandas_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comandas' }, payload => {
+        // Al haber cambios, volvemos a obtener todo para traer sus items fácilmente (polling inteligente tras notificación)
+        fetchComandas();
+      })
+      .subscribe();
+      
     return () => {
-      window.removeEventListener('nueva-comanda', handleNuevaComanda as EventListener);
-      window.removeEventListener('storage', handleStorage);
+      clearInterval(interval);
+      supabase.removeChannel(subscription);
     };
   }, []);
 
-  const despacharFuego = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+  const despacharFuego = async (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
     const btn = e.currentTarget;
     const rect = btn.getBoundingClientRect();
     const x = rect.left + rect.width / 2;
@@ -83,6 +74,12 @@ export default function CocinaKDS() {
       card.style.opacity = '0';
       card.style.transition = 'all 0.3s ease-in';
     }
+
+    // Actualizar base de datos
+    await supabase
+      .from('comandas')
+      .update({ estado: 'completado' })
+      .eq('id', id);
 
     setTimeout(() => {
       setComandas(prev => prev.filter(c => c.id !== id));
@@ -177,7 +174,9 @@ export default function CocinaKDS() {
               <ul className="space-y-4">
                 {comanda.items.map((item, i) => (
                   <li key={i} className="border-l-4 border-orange-500 pl-3">
-                    <div className="text-xl font-bold text-zinc-100">{item.nombre}</div>
+                    <div className="text-xl font-bold text-zinc-100">
+                      {item.cantidad ? `${item.cantidad}x ` : ''}{item.nombre}
+                    </div>
                     {item.notas && (
                       <div className="text-red-400 text-sm font-bold mt-1 uppercase bg-red-950/40 inline-block px-2 py-1 rounded">
                         ⚠️ {item.notas}

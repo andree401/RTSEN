@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAppContext, Dish } from '@/context/AppContext';
+import { supabase } from '@/lib/supabaseClient';
 
 type OrderItem = Dish & {
   quantity: number;
@@ -77,6 +78,37 @@ export default function RestaurantePOS() {
     const description = isExpress ? `Exprés: ${expressName}` : selectedLocation;
     const finalDescription = `Cobro de ${description} (Cajero: ${currentCashier?.name})`;
     await recordFinance(total, finalDescription);
+    
+    try {
+      const { data: comandaData, error: comandaError } = await supabase
+        .from('comandas')
+        .insert({
+          mesa: description,
+          estado: 'pendiente'
+        })
+        .select('id')
+        .single();
+        
+      if (comandaError) throw comandaError;
+      
+      if (comandaData) {
+        const itemsToInsert = order.map(item => ({
+          comanda_id: comandaData.id,
+          nombre: item.name,
+          cantidad: item.quantity,
+          // Si tuvieran notas se agregaría aquí. Agregamos las propiedades básicas.
+        }));
+        
+        const { error: itemsError } = await supabase
+          .from('comandas_items')
+          .insert(itemsToInsert);
+          
+        if (itemsError) throw itemsError;
+      }
+    } catch (error) {
+      console.error('Error insertando la comanda:', error);
+    }
+
     alert(`Cobro de $${total} procesado.\nIngreso registrado en Finanzas.`);
     setOrder([]);
     setExpressName('');
