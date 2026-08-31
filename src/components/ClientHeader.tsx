@@ -15,6 +15,9 @@ export default function ClientHeader() {
         <a href="/restaurante" className="hover:text-blue-400 transition-colors">
           Restaurante
         </a>
+        <a href="/cocina" className="hover:text-orange-400 text-orange-500 transition-colors font-bold tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]">
+          COCINA
+        </a>
         <a href="/admin" className="hover:text-red-400 text-red-500 transition-colors">
           Admin
         </a>

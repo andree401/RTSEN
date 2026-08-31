@@ -1,21 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppContext, Dish } from '@/context/AppContext';
 
 type OrderItem = Dish & {
   quantity: number;
 };
 
+type Cashier = {
+  name: string;
+  id: string;
+};
+
 const TABLES = ['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4', 'Mesa 5', 'Barra'];
 
 export default function RestaurantePOS() {
   const { menu, recordFinance } = useAppContext();
+  
+  const [isCashierLoggedIn, setIsCashierLoggedIn] = useState(false);
+  const [currentCashier, setCurrentCashier] = useState<Cashier | null>(null);
+  const [inputId, setInputId] = useState('');
+  const [inputName, setInputName] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+
   const [selectedLocation, setSelectedLocation] = useState<string>('Mesa 1');
   const [isExpress, setIsExpress] = useState(false);
   const [expressName, setExpressName] = useState('');
   
   const [order, setOrder] = useState<OrderItem[]>([]);
+
+  const handleLogin = () => {
+    const stored = localStorage.getItem('cajeros_registrados');
+    const cashiers: Cashier[] = stored ? JSON.parse(stored) : [];
+    
+    if (isRegistering) {
+      if (!inputName.trim()) return alert('Ingresa un nombre');
+      const newId = Math.floor(10000 + Math.random() * 90000).toString(); // 5 digits
+      const newCashier = { name: inputName, id: newId };
+      cashiers.push(newCashier);
+      localStorage.setItem('cajeros_registrados', JSON.stringify(cashiers));
+      alert(`Registrado exitosamente.\nTU ID DE CAJERO ES: ${newId}\n¡Guárdalo bien!`);
+      setCurrentCashier(newCashier);
+      setIsCashierLoggedIn(true);
+    } else {
+      if (!inputId.trim()) return alert('Ingresa un ID');
+      const found = cashiers.find(c => c.id === inputId);
+      if (found) {
+        setCurrentCashier(found);
+        setIsCashierLoggedIn(true);
+      } else {
+        alert('ID no encontrado. Verifica o regístrate.');
+      }
+    }
+  };
 
   const addToOrder = (dish: Dish) => {
     setOrder((prev) => {
@@ -38,7 +75,8 @@ export default function RestaurantePOS() {
   const handleCharge = async () => {
     if (order.length === 0) return;
     const description = isExpress ? `Exprés: ${expressName}` : selectedLocation;
-    await recordFinance(total, `Cobro de ${description}`);
+    const finalDescription = `Cobro de ${description} (Cajero: ${currentCashier?.name})`;
+    await recordFinance(total, finalDescription);
     alert(`Cobro de $${total} procesado.\nIngreso registrado en Finanzas.`);
     setOrder([]);
     setExpressName('');
@@ -47,6 +85,64 @@ export default function RestaurantePOS() {
   const handlePrint = () => {
     window.print();
   };
+
+  if (!isCashierLoggedIn) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
+          <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
+            {isRegistering ? 'Registro de Cajero' : 'Acceso de Cajeros'}
+          </h2>
+          
+          <div className="flex flex-col gap-4">
+            {isRegistering && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <input 
+                  type="text" 
+                  value={inputName} 
+                  onChange={e => setInputName(e.target.value)}
+                  className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Tu nombre..."
+                />
+              </div>
+            )}
+            
+            {!isRegistering && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ID de Cajero</label>
+                <input 
+                  type="text" 
+                  value={inputId} 
+                  onChange={e => setInputId(e.target.value)}
+                  className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Ej. 48291"
+                />
+              </div>
+            )}
+
+            <button 
+              onClick={handleLogin}
+              className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+            >
+              {isRegistering ? 'Registrarse y Entrar' : 'Entrar al Punto de Venta'}
+            </button>
+
+            <button 
+              onClick={() => {
+                setIsRegistering(!isRegistering);
+                setInputId('');
+                setInputName('');
+              }}
+              className="text-sm text-blue-600 hover:underline text-center"
+            >
+              {isRegistering ? 'Ya tengo un ID, iniciar sesión' : 'Soy nuevo, quiero registrarme'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-gray-100 p-4 gap-4 print:p-0 print:h-auto print:bg-white">
@@ -122,6 +218,9 @@ export default function RestaurantePOS() {
           <p className="text-gray-600 font-medium text-lg mt-1">
             {isExpress ? `Exprés: ${expressName || 'Cliente'}` : selectedLocation}
           </p>
+          <p className="text-gray-400 text-sm mt-1">
+            Cajero: {currentCashier?.name}
+          </p>
         </div>
 
         <div className="flex-1 overflow-auto print:overflow-visible">
@@ -176,3 +275,4 @@ export default function RestaurantePOS() {
     </div>
   );
 }
+

@@ -6,23 +6,12 @@ import { useAppContext, Dish } from '@/context/AppContext';
 export default function AdminPanel() {
   const { menu, addDish, updateDish, deleteDish } = useAppContext();
   
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
-  
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
-
-  const handleLogin = () => {
-    if (password === 'admin123') {
-      setIsAuthenticated(true);
-    } else {
-      alert('Contraseña incorrecta');
-    }
-  };
 
   const handleAddDish = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,29 +33,6 @@ export default function AdminPanel() {
       setEditingId(null);
     }
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
-        <div className="bg-gray-800 p-8 rounded-xl shadow-lg border border-red-900/50 max-w-sm w-full">
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">Acceso Admin</h2>
-          <input 
-            type="password" 
-            placeholder="Contraseña (admin123)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-gray-700 text-white border border-gray-600 rounded p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
-          />
-          <button 
-            onClick={handleLogin}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded transition-colors"
-          >
-            Entrar
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">

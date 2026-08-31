@@ -11,8 +11,8 @@ export type Dish = {
 
 type AppContextType = {
   ownerId: string | null;
-  login: (nombreNegocio: string) => void;
-  logout: () => void;
+  login: (email: string, password: string, isSignUp: boolean, restaurantName?: string) => Promise<void>;
+  logout: () => Promise<void>;
   
   menu: Dish[];
   addDish: (dish: Omit<Dish, 'id'>) => Promise<void>;
@@ -27,6 +27,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [menu, setMenu] = useState<Dish[]>([]);
   const [isLoaded, setIsLoaded] = useState(true);
+
+  useEffect(() => {
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setOwnerId(session.user.id);
+      }
+      setIsLoaded(true);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setOwnerId(session?.user?.id || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (ownerId) {
@@ -47,37 +64,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (nombreNegocio: string) => {
-    // 1. Buscamos el negocio por nombre
-    let { data, error } = await supabase
-      .from('negocios')
-      .select('id')
-      .eq('nombre', nombreNegocio)
-      .maybeSingle();
-
-    if (error) {
-       console.error("Error buscando negocio", error);
-       return;
-    }
-
-    if (data) {
-       setOwnerId(data.id);
+  const login = async (email: string, password: string, isSignUp: boolean, restaurantName?: string) => {
+    if (isSignUp) {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        alert('Error en registro: ' + error.message);
+        return;
+      }
+      if (data.user) {
+        const { error: insertError } = await supabase
+          .from('negocios')
+          .insert({ id: data.user.id, nombre: restaurantName });
+        if (insertError) {
+          console.error("Error creando negocio", insertError);
+          alert('Error creando negocio: ' + insertError.message);
+        }
+      }
     } else {
-       // Insertamos el nuevo negocio y que la base de datos genere el UUID
-       const { data: newData, error: insertError } = await supabase
-         .from('negocios')
-         .insert({ nombre: nombreNegocio })
-         .select('id')
-         .single();
-       if (insertError) {
-         console.error("Error creando negocio", insertError);
-       } else if (newData) {
-         setOwnerId(newData.id);
-       }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        alert('Error en inicio de sesión: ' + error.message);
+      }
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setOwnerId(null);
     setMenu([]);
   };
@@ -163,26 +175,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function AuthScreen({ onLogin }: { onLogin: (id: string) => void }) {
-  const [inputId, setInputId] = useState('');
+function AuthScreen({ onLogin }: { onLogin: (email: string, pass: string, isSignUp: boolean, name?: string) => void }) {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [restaurantName, setRestaurantName] = useState('');
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">SaaS Multi-Tenant</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">
+          {isSignUp ? 'Crear Cuenta' : 'SaaS Multi-Tenant'}
+        </h1>
         <div className="flex flex-col gap-4">
           <input 
-            type="text" 
-            placeholder="ID de Negocio (ej. mi-restaurante)" 
-            value={inputId} 
-            onChange={e => setInputId(e.target.value)} 
+            type="email" 
+            placeholder="Correo Electrónico" 
+            value={email} 
+            onChange={e => setEmail(e.target.value)} 
             className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
           />
+          <input 
+            type="password" 
+            placeholder="Contraseña" 
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          {isSignUp && (
+            <input 
+              type="text" 
+              placeholder="Nombre del Restaurante" 
+              value={restaurantName} 
+              onChange={e => setRestaurantName(e.target.value)} 
+              className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          )}
           <button 
-            onClick={() => { if(inputId.trim()) onLogin(inputId.trim()) }} 
+            onClick={() => onLogin(email, password, isSignUp, isSignUp ? restaurantName : undefined)} 
             className="bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition-colors"
           >
-            Ingresar / Registrar
+            {isSignUp ? 'Registrarse' : 'Ingresar'}
+          </button>
+          
+          <button 
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="text-sm text-blue-600 hover:underline mt-2"
+          >
+            {isSignUp ? '¿Ya tienes cuenta? Ingresa aquí' : '¿No tienes cuenta? Regístrate'}
           </button>
         </div>
       </div>

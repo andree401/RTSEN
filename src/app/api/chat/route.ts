@@ -1,26 +1,51 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    
-    // Simular límite de seguridad básico
-    if (body.message && body.message.length > 500) {
+    const { messages, transactions, geminiApiKey } = body;
+
+    if (!geminiApiKey) {
       return NextResponse.json(
-        { error: 'Mensaje demasiado largo. Límite de 500 caracteres excedido.' },
-        { status: 400 }
+        { error: 'No se proporcionó la API Key de Gemini.' },
+        { status: 401 }
       );
     }
 
-    // Mensaje dummy de Gemini
+    const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+
+    let systemInstruction = "Eres un asesor financiero agresivo y experto para dueños de restaurantes. Analiza estos números y dame 3 consejos rápidos y duros para ganar más dinero.";
+    if (transactions) {
+      systemInstruction += `\n\nContexto de transacciones:\n${JSON.stringify(transactions)}`;
+    }
+
+    const contents = (messages || []).map((m: any) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+
+    if (contents.length === 0) {
+      contents.push({ role: 'user', parts: [{ text: 'Analiza mis finanzas.' }] });
+    }
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents,
+      config: {
+        systemInstruction,
+      }
+    });
+
     return NextResponse.json({
       role: 'assistant',
-      content: '¡Hola! Soy Gemini, tu asistente financiero. (Esta es una respuesta simulada).'
+      content: response.text
     });
     
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Gemini API Error:", error);
     return NextResponse.json(
-      { error: 'Error interno del servidor.' },
+      { error: error.message || 'Error interno del servidor.' },
       { status: 500 }
     );
   }
