@@ -1,29 +1,44 @@
-# 🚀 RTSEN - ERP SaaS Multi-Tenant
+# 🚀 RTSEN 2.0 - ERP SaaS Multi-Tenant
 
-Bienvenidos al repositorio oficial de **RTSEN**, la evolución definitiva de un antiguo sistema de finanzas de consola C++ transformado en una plataforma Software as a Service (SaaS) web mundial.
+Bienvenidos al repositorio oficial de **RTSEN**, la evolución definitiva de un sistema C++ transformado en una plataforma de software SaaS web empresarial. 
 
 ## 🌟 Arquitectura del Proyecto
 *   **Frontend:** Next.js (App Router), React, Tailwind CSS.
-*   **Backend & Base de Datos:** Supabase (PostgreSQL) con Supabase-js.
-*   **Despliegue:** Netlify / Vercel vía GitHub Actions (CI/CD continuo).
+*   **Backend & Seguridad:** Supabase (PostgreSQL) con **Supabase Auth** y Row Level Security (RLS).
+*   **Inteligencia Artificial:** `@google/genai` (Modelo Gemini-1.5-flash) para análisis financiero y chat.
+*   **Testing:** Vitest (Unitario) y Playwright/Scripts E2E (Producción).
+*   **Despliegue:** Netlify vía GitHub Actions.
 
-## 🛠️ Estado Actual (Fase 1 Completada)
-El sistema ha migrado con éxito a la nube. Sus características principales actuales son:
-1.  **Multi-Tenant (SaaS):** Capacidad de soportar múltiples negocios o restaurantes. Cada dueño tiene su propio `negocio_id` generado por UUID.
-2.  **Panel de Administración Privado:** Una ruta `/admin` protegida para agregar, editar y eliminar platillos del menú, que impacta la base de datos en tiempo real.
-3.  **Punto de Venta (POS):** Ruta `/restaurante` donde los cajeros pueden tomar pedidos exprés, cobrar mesas e imprimir comandas.
-4.  **Dashboard Financiero:** Análisis de ingresos/gastos, reportes y un chat inteligente asistido por IA (Gemini).
+## 🛠️ Características Actuales (Versión 2.0 Completada)
+El sistema ha alcanzado el grado corporativo con las siguientes funciones:
 
-## 🗄️ Esquema de Base de Datos (Supabase)
-El sistema depende de 3 tablas clave en PostgreSQL:
-*   `negocios`: Almacena el `id` (UUID), `nombre`, y `owner_email`.
-*   `menu_items`: Almacena platillos con `nombre`, `precio` y está enlazado a `negocio_id`.
-*   `finanzas_registros`: Registra ventas y gastos con `monto`, `tipo` (Ingreso/Gasto), `categoria` y `descripcion`.
+1.  **🔐 Seguridad Unificada y Aislamiento Multi-Tenant (Dueños):** 
+    * Registro e inicio de sesión obligatorio con correo y contraseña.
+    * Todas las operaciones de BD están atadas criptográficamente al `ownerId`.
+    * El panel de administración (`/admin`) y el Dashboard financiero comparten el mismo acceso VIP.
+2.  **👨‍💼 Sistema de Empleados (Cajeros):**
+    * Barrera de acceso en el Punto de Venta (`/restaurante`).
+    * Registro de cajeros nuevos con generación de un PIN (ID) de 5 dígitos (Checador).
+    * Registro contable exacto (quién hizo qué venta).
+3.  **🔥 Kitchen Display System (KDS):**
+    * Centro de mando para la cocina (`/cocina`) con diseño oscuro y neón (Zona de guerra culinaria).
+    * Alertas visuales para órdenes retrasadas y botón interactivo gigante de "¡FUEGO!" con física de partículas CSS.
+4.  **🧠 Asistente de Inteligencia Artificial (BYOK):**
+    * Chat financiero interactivo continuo en el Dashboard.
+    * Modelo de negocio "Bring Your Own Key" (El dueño ingresa su propia API Key de Gemini para evitar costos globales al administrador).
+    * Personalidad agresiva enfocada en el crecimiento financiero.
+5.  **💣 Testing Agresivo (QA):**
+    * Cobertura de pruebas unitarias sobre el POS y los componentes usando `Vitest`.
 
-## 🗺️ Roadmap Futuro (Lo que sigue)
-*   [ ] **Fase 2:** Implementar "Pantalla de Cocina (KDS)" y sistema de inventario (deducción automática de insumos por receta).
-*   [ ] **Fase 3:** Sistema avanzado de Supabase Auth (Logins con correo/contraseña) y permisos por empleado (Roles de Cajero vs Administrador).
-*   [ ] **Fase 4:** Suscripciones con Stripe para monetizar el acceso a otros restaurantes.
+## 🗄️ Esquema de Base de Datos
+*   `negocios`: `id` (UUID de Supabase Auth), `nombre`.
+*   `menu_items`: `id`, `negocio_id`, `nombre`, `precio`.
+*   `finanzas_registros`: `id`, `negocio_id`, `monto`, `tipo` (Ingreso/Gasto), `categoria`, `descripcion` (Incluye nombre del cajero).
+
+## 🗺️ Roadmap Futuro (Fase 2)
+*   [ ] **Ejecutar `esquema_fase2.sql`:** Implementar las tablas de `inventario_items` y `recetas` en la nube.
+*   [ ] **Control de Mermas:** Deducción automática de gramos y piezas de inventario con cada botón de ¡Fuego! presionado en la cocina.
+*   [ ] **Monetización Web3/Stripe:** Cobro automatizado mensual a los restaurantes afiliados a la plataforma SaaS.
 
 ## 🤖 Notas para el Agente (IA)
-> **ATENCIÓN IA:** Al iniciar cualquier nueva conversación en este proyecto, DEBES leer este `README.md` y el esquema SQL guardado para recuperar inmediatamente el contexto de arquitectura. Todo desarrollo nuevo debe priorizar el aislamiento de datos (Multi-Tenant) y sincronización con Supabase.
+> **ATENCIÓN IA:** Al iniciar cualquier sesión, revisa este archivo y los scripts de tests para entender el nivel de complejidad actual (V2.0). Cualquier módulo nuevo DEBE tener soporte para el sistema de Cajeros y respetar las políticas de aislamiento de Supabase Auth.
