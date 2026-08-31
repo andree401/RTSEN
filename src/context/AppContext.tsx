@@ -11,7 +11,7 @@ export type Dish = {
 
 type AppContextType = {
   ownerId: string | null;
-  login: (id: string) => void;
+  login: (nombreNegocio: string) => void;
   logout: () => void;
   
   menu: Dish[];
@@ -37,25 +37,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fetchMenu = async (negocioId: string) => {
     const { data, error } = await supabase
       .from('menu_items')
-      .select('id, name, price')
+      .select('id, nombre, precio')
       .eq('negocio_id', negocioId);
     
     if (error) {
       console.error('Error fetching menu:', error);
     } else if (data) {
-      setMenu(data);
+      setMenu(data.map(d => ({ id: d.id, name: d.nombre, price: d.precio })));
     }
   };
 
-  const login = async (id: string) => {
-    setOwnerId(id);
-    // Optional: You could check or insert the negocio here, assuming schema handles it
-    const { error } = await supabase
+  const login = async (nombreNegocio: string) => {
+    // 1. Buscamos el negocio por nombre
+    let { data, error } = await supabase
       .from('negocios')
-      .upsert({ id, nombre: id })
-      .select()
-      .single();
-    if (error) console.error('Error upserting negocio:', error);
+      .select('id')
+      .eq('nombre', nombreNegocio)
+      .maybeSingle();
+
+    if (error) {
+       console.error("Error buscando negocio", error);
+       return;
+    }
+
+    if (data) {
+       setOwnerId(data.id);
+    } else {
+       // Insertamos el nuevo negocio y que la base de datos genere el UUID
+       const { data: newData, error: insertError } = await supabase
+         .from('negocios')
+         .insert({ nombre: nombreNegocio })
+         .select('id')
+         .single();
+       if (insertError) {
+         console.error("Error creando negocio", insertError);
+       } else if (newData) {
+         setOwnerId(newData.id);
+       }
+    }
   };
 
   const logout = () => {
@@ -67,14 +86,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!ownerId) return;
     const { data, error } = await supabase
       .from('menu_items')
-      .insert({ ...dish, negocio_id: ownerId })
+      .insert({ nombre: dish.name, precio: dish.price, negocio_id: ownerId })
       .select()
       .single();
     
     if (error) {
       console.error('Error adding dish:', error);
+      alert('Error guardando platillo en BD: ' + error.message);
     } else if (data) {
-      setMenu([...menu, data]);
+      setMenu([...menu, { id: data.id, name: data.nombre, price: data.precio }]);
     }
   };
 
@@ -82,12 +102,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!ownerId) return;
     const { error } = await supabase
       .from('menu_items')
-      .update(updatedDish)
+      .update({ nombre: updatedDish.name, precio: updatedDish.price })
       .eq('id', id)
       .eq('negocio_id', ownerId);
 
     if (error) {
       console.error('Error updating dish:', error);
+      alert('Error actualizando platillo: ' + error.message);
     } else {
       setMenu(menu.map((d) => (d.id === id ? { ...d, ...updatedDish } : d)));
     }
@@ -103,6 +124,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error('Error deleting dish:', error);
+      alert('Error eliminando platillo: ' + error.message);
     } else {
       setMenu(menu.filter((d) => d.id !== id));
     }
@@ -110,12 +132,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const recordFinance = async (amount: number, description: string) => {
     if (!ownerId) return;
+    const tipo = amount >= 0 ? 'Ingreso' : 'Gasto';
+    const categoria = 'Restaurante'; 
     const { error } = await supabase
       .from('finanzas_registros')
-      .insert({ negocio_id: ownerId, monto: amount, descripcion: description });
+      .insert({ 
+         negocio_id: ownerId, 
+         monto: Math.abs(amount), 
+         descripcion: description,
+         tipo: tipo,
+         categoria: categoria
+      });
 
     if (error) {
       console.error('Error recording finance:', error);
+      alert('Error guardando finanzas: ' + error.message);
     }
   };
 
