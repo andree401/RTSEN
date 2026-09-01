@@ -1,56 +1,46 @@
-# 🚀 RTSEN 2.5 (Fase 2) - ERP SaaS Multi-Tenant
+# 🚀 RTSEN 3.0 (Fase 3) - ERP SaaS Multi-Tenant Nivel Corporativo
 
-Bienvenidos al repositorio oficial de **RTSEN**, la evolución definitiva de un sistema C++ transformado en una plataforma de software SaaS web empresarial. 
+Bienvenidos al repositorio oficial de **RTSEN**, la plataforma SaaS de administración restaurantera definitiva, escalable y 100% blindada.
 
 ## 🌟 Arquitectura del Proyecto
 *   **Frontend:** Next.js (App Router), React, Tailwind CSS.
-*   **Backend & Seguridad:** Supabase (PostgreSQL) con **Supabase Auth** y Row Level Security (RLS) estricto.
-*   **Inteligencia Artificial:** `@google/genai` (Modelo Gemini-1.5-flash) para análisis financiero interactivo continuo.
-*   **Sincronización de Datos:** Supabase Realtime (WebSockets) para comunicación instantánea entre terminales.
-*   **Testing:** Vitest (Unitario) y Playwright/Scripts E2E (Producción).
-*   **Despliegue:** Netlify vía GitHub Actions.
+*   **Backend & Seguridad:** Supabase (PostgreSQL) con **Supabase Auth** y **Triggers Automáticos de Seguridad**.
+*   **Inteligencia Artificial:** `@google/genai` (Modelo Gemini-1.5-flash) integrado mediante BYOK (Bring Your Own Key).
+*   **Sincronización de Datos:** Supabase Realtime (WebSockets) con latencia <50ms.
+*   **Testing Estructural:** 
+    *   **Unitario/Lógico:** `Vitest` (Para matemáticas del POS).
+    *   **Destructivo/Visual (E2E):** `Playwright` (Aislado en la carpeta `/e2e`).
+*   **Despliegue Global:** Netlify.
 
-## 🛠️ Características Actuales (Fase 2 Completada)
-El sistema ha alcanzado el grado corporativo total con las siguientes funciones:
+## 🛠️ Características Actuales (Fase 3 Completada)
+El sistema opera de forma autónoma con los siguientes módulos de alto nivel:
 
-1.  **🔐 Seguridad Unificada y Aislamiento Multi-Tenant (Dueños):** 
-    * Registro e inicio de sesión obligatorio con correo y contraseña en `AppContext`.
-    * Todas las operaciones de BD están atadas criptográficamente al `ownerId`.
-    * El panel de administración (`/admin`) y el Dashboard financiero comparten el mismo acceso VIP.
-2.  **👨‍💼 Sistema de Empleados (Cajeros):**
-    * Barrera de acceso en el Punto de Venta (`/restaurante`).
-    * Registro de cajeros nuevos con generación de un PIN (ID) de 5 dígitos (Checador digital).
-    * Registro contable exacto (quién hizo qué venta).
+1.  **🔐 Seguridad Autónoma (Ghost Auth):** 
+    * La creación de negocios (`negocios`) ya no depende de la web, bloqueando ciberataques. Se utiliza un **Disparador de Postgres (Trigger)** en la tabla interna de `auth.users` que construye el negocio de forma simultánea en cuanto un usuario confirma su correo vía SMTP (Resend).
+    * Todos los datos del negocio tienen políticas RLS (Row Level Security) impenetrables.
+2.  **👨‍💼 Sistema Global de Empleados (Cajeros en la Nube):**
+    * La base de datos de cajeros (`empleados`) ha sido migrada a Supabase.
+    * Si el dueño cambia de dispositivo, los PINs (5 dígitos) de sus empleados siguen funcionando universalmente.
 3.  **🔥 Kitchen Display System (KDS) en Tiempo Real:**
-    * Centro de mando para la cocina (`/cocina`) con diseño oscuro y neón (Zona de guerra culinaria).
-    * Alertas visuales para órdenes retrasadas y botón interactivo gigante de "¡FUEGO!" con física de partículas CSS.
-    * Conectado a **Supabase WebSockets**; las órdenes aparecen al instante sin recargar la página.
-    * Al presionar "¡Fuego!", la comanda se marca como 'completada' y desaparece sincronizadamente.
-4.  **📦 Módulo Logístico (Inventario y Recetas):**
-    * `/admin/inventario`: Control maestro de insumos (Tomate, Carne, etc.). Alertas de escasez (color rojo si el stock es <= 5). Edición de stock al vuelo.
-    * `/admin/recetas`: Enlazador inteligente para dictar la anatomía de los platillos del Menú usando ingredientes del inventario.
-5.  **🧠 Asistente de Inteligencia Artificial (BYOK):**
-    * Chat financiero interactivo continuo en el Dashboard.
-    * Modelo de negocio "Bring Your Own Key" (El dueño ingresa su propia API Key de Gemini para evitar costos globales al administrador).
-    * Personalidad agresiva y brutalmente honesta enfocada en el crecimiento financiero del restaurante.
-6.  **💣 Testing Agresivo (QA):**
-    * Cobertura de pruebas unitarias sobre el POS y los componentes usando `Vitest` (6/6 exitosas).
-    * Robots de asalto E2E para verificar caídas en el servidor de producción.
+    * Centro de mando (`/cocina`) conectado a WebSockets.
+    * Alertas de pérdida de conexión y botones de "Fuego" para marcar órdenes completadas en Base de Datos.
+4.  **📦 Sistema Logístico Autónomo (Fase 2 Intelectual):**
+    * Panel de control de Inventarios y Recetas (`/admin/inventario`, `/admin/recetas`).
+    * **Trigger de Deducción:** Al vender un platillo en el POS, un script de Postgres revisa la receta y descuenta milimétricamente el inventario (ingredientes) sin intervención del Frontend, previniendo cuellos de botella.
 
-## 🗄️ Esquema de Base de Datos (PostgreSQL en Supabase)
-Tablas aseguradas bajo políticas RLS restrictivas usando `auth.uid()`:
-*   `negocios`: `id` (UUID de Supabase Auth), `nombre`.
+## 🗄️ Esquema de Base de Datos (Core)
+*   `negocios`: Creado vía *Postgres Trigger* de `auth.users`.
+*   `empleados`: `id`, `negocio_id`, `nombre`, `pin`.
 *   `menu_items`: `id`, `negocio_id`, `nombre`, `precio`.
-*   `finanzas_registros`: `id`, `negocio_id`, `monto`, `tipo` (Ingreso/Gasto), `categoria`, `descripcion` (Incluye nombre del cajero).
+*   `finanzas_registros`: `id`, `negocio_id`, `monto`, `tipo` (Ingreso/Gasto), `categoria`, `descripcion` (Incluye cajero).
 *   `inventario_items`: `id`, `negocio_id`, `nombre_ingrediente`, `cantidad_disponible`, `unidad_medida`.
 *   `recetas`: `id`, `menu_item_id`, `ingrediente_id`, `cantidad_requerida`.
-*   `comandas`: `id`, `negocio_id`, `estado` (pendiente/completada), `total`, `cajero_id`.
+*   `comandas`: `id`, `negocio_id`, `estado`, `total`, `cajero_id`.
 *   `comandas_items`: `id`, `comanda_id`, `menu_item_id`, `cantidad`.
 
-## 🗺️ Roadmap Futuro (Fase 3 - Escalabilidad)
-*   [ ] **Deducción Automática de Inventario:** Crear un "Trigger" en Postgres que lea la tabla `recetas` y reste el stock en `inventario_items` automáticamente cuando se inserte un `comandas_items`.
+## 🗺️ Roadmap Futuro (Siguientes Pasos)
 *   [ ] **Dashboard de Ventas Multicaja:** Pantalla maestra para monitorear Múltiples Cajas y Empleados en vivo.
-*   [ ] **Monetización Web3/Stripe:** Cobro automatizado mensual (Suscripción) a los dueños de restaurantes para poder utilizar la plataforma SaaS.
+*   [ ] **Monetización Web3/Stripe:** Cobro automatizado mensual a los dueños de restaurantes para poder utilizar la plataforma SaaS.
 
-## 🤖 Notas para el Agente (IA)
-> **PRIORIDAD CRÍTICA:** Al iniciar cualquier sesión, lee de inmediato este archivo para cargar la arquitectura en tu contexto. Este documento es la Verdad Absoluta del código. NINGÚN despliegue mayor está completo hasta que este `README.md` refleje las nuevas capacidades.
+## 🤖 Directiva Primaria IA
+> Al iniciar cualquier sesión, debes leer este documento obligatoriamente. Cualquier cambio arquitectónico, de Base de Datos o de configuración general debe quedar documentado aquí antes de empujar el código a Producción.
