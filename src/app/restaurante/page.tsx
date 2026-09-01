@@ -16,7 +16,7 @@ type Cashier = {
 const TABLES = ['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4', 'Mesa 5', 'Barra'];
 
 export default function RestaurantePOS() {
-  const { menu, recordFinance } = useAppContext();
+  const { menu, recordFinance, ownerId } = useAppContext();
   
   const [isCashierLoggedIn, setIsCashierLoggedIn] = useState(false);
   const [currentCashier, setCurrentCashier] = useState<Cashier | null>(null);
@@ -32,22 +32,32 @@ export default function RestaurantePOS() {
   
   const [order, setOrder] = useState<OrderItem[]>([]);
 
-  const handleLogin = () => {
-    const stored = localStorage.getItem('cajeros_registrados');
-    const cashiers: Cashier[] = stored ? JSON.parse(stored) : [];
-    
+  const handleLogin = async () => {
     if (isRegistering) {
       if (!inputName.trim()) {
         alert('⚠️ Error: Ingresa un nombre válido.');
         return;
       }
-      const newId = Math.floor(10000 + Math.random() * 90000).toString(); // 5 digits
-      const newCashier = { name: inputName, id: newId };
-      cashiers.push(newCashier);
-      localStorage.setItem('cajeros_registrados', JSON.stringify(cashiers));
-      alert(`✅ Registrado exitosamente.\nTU ID DE CAJERO ES: ${newId}\n¡Guárdalo bien!`);
-      setCurrentCashier(newCashier);
-      setIsCashierLoggedIn(true);
+      setIsProcessing(true);
+      try {
+        const newId = Math.floor(10000 + Math.random() * 90000).toString(); // 5 digits
+        const { error } = await supabase.from('empleados').insert({
+          nombre: inputName,
+          pin: newId,
+          negocio_id: ownerId
+        });
+        
+        if (error) throw error;
+        
+        alert(`✅ Registrado exitosamente.\nTU ID DE CAJERO ES: ${newId}\n¡Guárdalo bien!`);
+        setCurrentCashier({ name: inputName, id: newId });
+        setIsCashierLoggedIn(true);
+      } catch (error: any) {
+        console.error('Error al registrar:', error);
+        alert(`❌ Error al registrar: ${error.message}`);
+      } finally {
+        setIsProcessing(false);
+      }
     } else {
       if (!inputId.trim()) {
         alert('⚠️ Error: Ingresa un ID.');
@@ -58,12 +68,26 @@ export default function RestaurantePOS() {
         alert('⚠️ Error: El ID de cajero debe tener exactamente 5 dígitos numéricos.');
         return;
       }
-      const found = cashiers.find(c => c.id === inputId.trim());
-      if (found) {
-        setCurrentCashier(found);
-        setIsCashierLoggedIn(true);
-      } else {
-        alert('❌ ID no encontrado. Verifica o regístrate.');
+      setIsProcessing(true);
+      try {
+        const { data, error } = await supabase
+          .from('empleados')
+          .select('*')
+          .eq('pin', inputId.trim())
+          .eq('negocio_id', ownerId)
+          .single();
+
+        if (error || !data) {
+          alert('❌ ID no encontrado. Verifica o regístrate.');
+        } else {
+          setCurrentCashier({ name: data.nombre, id: data.pin });
+          setIsCashierLoggedIn(true);
+        }
+      } catch (error: any) {
+        console.error('Error al iniciar sesión:', error);
+        alert(`❌ Error al iniciar sesión: ${error.message}`);
+      } finally {
+        setIsProcessing(false);
       }
     }
   };

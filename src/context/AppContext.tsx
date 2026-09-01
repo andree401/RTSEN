@@ -79,22 +79,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     if (isSignUp) {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { restaurant_name: restaurantName } } });
       if (error) {
         alert('Error en registro: ' + error.message);
         return;
       }
       if (data.session === null) {
         alert("Registro exitoso. Revisa tu correo o desactiva la confirmación de email en Supabase para poder entrar.");
-      }
-      if (data.user) {
-        const { error: insertError } = await supabase
-          .from('negocios')
-          .insert({ id: data.user.id, nombre: restaurantName });
-        if (insertError) {
-          console.error("Error creando negocio", insertError);
-          alert('Error creando negocio: ' + insertError.message);
-        }
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
