@@ -1,8 +1,12 @@
 'use client';
 
+import { useAppContext } from '../context/AppContext';
+
 export default function ClientHeader() {
-  const handleLogout = () => {
-    localStorage.removeItem('saas_current_owner');
+  const { logout } = useAppContext();
+
+  const handleLogout = async () => {
+    await logout();
     window.location.href = '/';
   };
 
