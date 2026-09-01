@@ -65,11 +65,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string, isSignUp: boolean, restaurantName?: string) => {
+    if (!email.trim() || !password.trim()) {
+      alert("El correo y la contraseña son obligatorios.");
+      return;
+    }
+    if (isSignUp && (!restaurantName || !restaurantName.trim())) {
+      alert("El nombre del restaurante es obligatorio.");
+      return;
+    }
+    if (password.length < 6) {
+      alert("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
     if (isSignUp) {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) {
         alert('Error en registro: ' + error.message);
         return;
+      }
+      if (data.session === null) {
+        alert("Registro exitoso. Revisa tu correo o desactiva la confirmación de email en Supabase para poder entrar.");
       }
       if (data.user) {
         const { error: insertError } = await supabase
@@ -175,12 +191,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function AuthScreen({ onLogin }: { onLogin: (email: string, pass: string, isSignUp: boolean, name?: string) => void }) {
+function AuthScreen({ onLogin }: { onLogin: (email: string, pass: string, isSignUp: boolean, name?: string) => Promise<void> }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [restaurantName, setRestaurantName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      await onLogin(email, password, isSignUp, isSignUp ? restaurantName : undefined);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-sm">
@@ -193,14 +219,16 @@ function AuthScreen({ onLogin }: { onLogin: (email: string, pass: string, isSign
             placeholder="Correo Electrónico" 
             value={email} 
             onChange={e => setEmail(e.target.value)} 
-            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+            disabled={isLoading}
+            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
           />
           <input 
             type="password" 
             placeholder="Contraseña" 
             value={password} 
             onChange={e => setPassword(e.target.value)} 
-            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+            disabled={isLoading}
+            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
           />
           {isSignUp && (
             <input 
@@ -208,19 +236,22 @@ function AuthScreen({ onLogin }: { onLogin: (email: string, pass: string, isSign
               placeholder="Nombre del Restaurante" 
               value={restaurantName} 
               onChange={e => setRestaurantName(e.target.value)} 
-              className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+              disabled={isLoading}
+              className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
             />
           )}
           <button 
-            onClick={() => onLogin(email, password, isSignUp, isSignUp ? restaurantName : undefined)} 
-            className="bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition-colors"
+            onClick={handleSubmit} 
+            disabled={isLoading}
+            className="bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
           >
-            {isSignUp ? 'Registrarse' : 'Ingresar'}
+            {isLoading ? 'Cargando...' : (isSignUp ? 'Registrarse' : 'Ingresar')}
           </button>
           
           <button 
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-sm text-blue-600 hover:underline mt-2"
+            disabled={isLoading}
+            className="text-sm text-blue-600 hover:underline mt-2 disabled:opacity-50"
           >
             {isSignUp ? '¿Ya tienes cuenta? Ingresa aquí' : '¿No tienes cuenta? Regístrate'}
           </button>

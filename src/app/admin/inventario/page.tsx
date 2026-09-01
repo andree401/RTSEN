@@ -27,18 +27,21 @@ export default function InventarioPanel() {
   const fetchInventario = useCallback(async () => {
     if (!ownerId) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from('inventario_items')
-      .select('id, nombre, cantidad, unidad_medida')
-      .eq('negocio_id', ownerId)
-      .order('nombre');
+    try {
+      const { data, error } = await supabase
+        .from('inventario_items')
+        .select('id, nombre, cantidad, unidad_medida')
+        .eq('negocio_id', ownerId)
+        .order('nombre');
 
-    if (error) {
+      if (error) throw error;
+      setItems((data as InventarioItem[]) || []);
+    } catch (error: any) {
       console.error('Error fetching inventario:', error);
-    } else if (data) {
-      setItems(data as InventarioItem[]);
+      alert('Error al cargar el inventario: ' + error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [ownerId]);
 
   useEffect(() => {
@@ -49,24 +52,34 @@ export default function InventarioPanel() {
     e.preventDefault();
     if (!ownerId || !newName || !newCantidad || !newUnidad) return;
     
-    const { data, error } = await supabase
-      .from('inventario_items')
-      .insert({
-        negocio_id: ownerId,
-        nombre: newName,
-        cantidad: Number(newCantidad),
-        unidad_medida: newUnidad
-      })
-      .select()
-      .single();
+    const cantidad = Number(newCantidad);
+    if (isNaN(cantidad) || cantidad < 0) {
+      alert('Por favor ingresa una cantidad válida mayor o igual a cero.');
+      return;
+    }
 
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('inventario_items')
+        .insert({
+          negocio_id: ownerId,
+          nombre: newName,
+          cantidad,
+          unidad_medida: newUnidad
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        setItems([...items, data as InventarioItem].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+        setNewName('');
+        setNewCantidad('');
+        setNewUnidad('');
+      }
+    } catch (error: any) {
       alert('Error al agregar al inventario: ' + error.message);
-    } else if (data) {
-      setItems([...items, data as InventarioItem].sort((a, b) => a.nombre.localeCompare(b.nombre)));
-      setNewName('');
-      setNewCantidad('');
-      setNewUnidad('');
     }
   };
 
@@ -78,33 +91,43 @@ export default function InventarioPanel() {
   const saveEdit = async () => {
     if (!ownerId || !editingId || !editCantidad) return;
 
-    const { error } = await supabase
-      .from('inventario_items')
-      .update({ cantidad: Number(editCantidad) })
-      .eq('id', editingId)
-      .eq('negocio_id', ownerId);
+    const cantidad = Number(editCantidad);
+    if (isNaN(cantidad) || cantidad < 0) {
+      alert('Por favor ingresa una cantidad válida mayor o igual a cero.');
+      return;
+    }
 
-    if (error) {
-      alert('Error al actualizar cantidad: ' + error.message);
-    } else {
-      setItems(items.map(item => item.id === editingId ? { ...item, cantidad: Number(editCantidad) } : item));
+    try {
+      const { error } = await supabase
+        .from('inventario_items')
+        .update({ cantidad })
+        .eq('id', editingId)
+        .eq('negocio_id', ownerId);
+
+      if (error) throw error;
+      
+      setItems(items.map(item => item.id === editingId ? { ...item, cantidad } : item));
       setEditingId(null);
+    } catch (error: any) {
+      alert('Error al actualizar cantidad: ' + error.message);
     }
   };
 
   const deleteItem = async (id: string) => {
     if (!ownerId || !confirm('¿Estás seguro de eliminar este ingrediente?')) return;
 
-    const { error } = await supabase
-      .from('inventario_items')
-      .delete()
-      .eq('id', id)
-      .eq('negocio_id', ownerId);
+    try {
+      const { error } = await supabase
+        .from('inventario_items')
+        .delete()
+        .eq('id', id)
+        .eq('negocio_id', ownerId);
 
-    if (error) {
-      alert('Error eliminando ingrediente: ' + error.message);
-    } else {
+      if (error) throw error;
+      
       setItems(items.filter(item => item.id !== id));
+    } catch (error: any) {
+      alert('Error eliminando ingrediente: ' + error.message);
     }
   };
 

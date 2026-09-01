@@ -13,24 +13,34 @@ type Comanda = {
 
 export default function CocinaKDS() {
   const [comandas, setComandas] = useState<Comanda[]>([]);
+  // PARCHE: Añadido estado para manejar errores en la KDS
+  const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchComandas = async () => {
-    const { data, error } = await supabase
-      .from('comandas')
-      .select('*, comandas_items(*)')
-      .eq('estado', 'pendiente');
+    try {
+      const { data, error } = await supabase
+        .from('comandas')
+        .select('*, comandas_items(*)')
+        .eq('estado', 'pendiente');
+        
+      if (error) throw error;
       
-    if (data && !error) {
-      const now = new Date().getTime();
-      const formatted = data.map((d: any) => ({
-        id: d.id,
-        mesa: d.mesa,
-        items: d.comandas_items || [],
-        created_at: d.created_at || new Date().toISOString(),
-        tiempo: Math.floor((now - new Date(d.created_at || now).getTime()) / 60000)
-      }));
-      setComandas(formatted);
+      if (data) {
+        const now = new Date().getTime();
+        const formatted = data.map((d: any) => ({
+          id: d.id,
+          mesa: d.mesa,
+          items: d.comandas_items || [],
+          created_at: d.created_at || new Date().toISOString(),
+          tiempo: Math.floor((now - new Date(d.created_at || now).getTime()) / 60000)
+        }));
+        setComandas(formatted);
+        setErrorStatus(null);
+      }
+    } catch (error: any) {
+      console.error('Error fetching comandas:', error);
+      setErrorStatus(`⚠️ Error cargando comandas: ${error.message || 'Desconocido'}`);
     }
   };
 
@@ -45,13 +55,24 @@ export default function CocinaKDS() {
     }, 60000); // Update time every minute
     
     // Suscripción a Supabase
+    // PARCHE: Añadido manejo de estado de conexión para detectar caídas
     const subscription = supabase
       .channel('comandas_channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comandas' }, payload => {
         // Al haber cambios, volvemos a obtener todo para traer sus items fácilmente (polling inteligente tras notificación)
         fetchComandas();
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Conectado al canal de comandas');
+          setErrorStatus(null);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Error en el canal de Supabase', err);
+          setErrorStatus('⚠️ Error de conexión en tiempo real. Se perdió la conexión con el servidor.');
+        } else if (status === 'TIMED_OUT') {
+          setErrorStatus('⚠️ Tiempo de espera agotado al conectar al servidor.');
+        }
+      });
       
     return () => {
       clearInterval(interval);
@@ -127,6 +148,12 @@ export default function CocinaKDS() {
 
   return (
     <div className="min-h-screen bg-zinc-950 p-6 font-mono text-zinc-100 selection:bg-orange-500 overflow-x-hidden">
+      {/* PARCHE: Alerta visual en caso de error de conexión o base de datos */}
+      {errorStatus && (
+        <div className="mb-4 p-4 bg-red-900 border-2 border-red-500 text-white font-bold rounded shadow-lg animate-pulse">
+          {errorStatus}
+        </div>
+      )}
       
       <div className="mb-8 border-b-4 border-orange-500 pb-4 flex justify-between items-end">
         <div>

@@ -23,6 +23,8 @@ export default function RestaurantePOS() {
   const [inputId, setInputId] = useState('');
   const [inputName, setInputName] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  // PARCHE: Añadido estado de carga para cobros y validaciones
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [selectedLocation, setSelectedLocation] = useState<string>('Mesa 1');
   const [isExpress, setIsExpress] = useState(false);
@@ -35,22 +37,33 @@ export default function RestaurantePOS() {
     const cashiers: Cashier[] = stored ? JSON.parse(stored) : [];
     
     if (isRegistering) {
-      if (!inputName.trim()) return alert('Ingresa un nombre');
+      if (!inputName.trim()) {
+        alert('⚠️ Error: Ingresa un nombre válido.');
+        return;
+      }
       const newId = Math.floor(10000 + Math.random() * 90000).toString(); // 5 digits
       const newCashier = { name: inputName, id: newId };
       cashiers.push(newCashier);
       localStorage.setItem('cajeros_registrados', JSON.stringify(cashiers));
-      alert(`Registrado exitosamente.\nTU ID DE CAJERO ES: ${newId}\n¡Guárdalo bien!`);
+      alert(`✅ Registrado exitosamente.\nTU ID DE CAJERO ES: ${newId}\n¡Guárdalo bien!`);
       setCurrentCashier(newCashier);
       setIsCashierLoggedIn(true);
     } else {
-      if (!inputId.trim()) return alert('Ingresa un ID');
-      const found = cashiers.find(c => c.id === inputId);
+      if (!inputId.trim()) {
+        alert('⚠️ Error: Ingresa un ID.');
+        return;
+      }
+      // PARCHE: Validación de formato de ID numérico y de longitud
+      if (!/^\d{5}$/.test(inputId.trim())) {
+        alert('⚠️ Error: El ID de cajero debe tener exactamente 5 dígitos numéricos.');
+        return;
+      }
+      const found = cashiers.find(c => c.id === inputId.trim());
       if (found) {
         setCurrentCashier(found);
         setIsCashierLoggedIn(true);
       } else {
-        alert('ID no encontrado. Verifica o regístrate.');
+        alert('❌ ID no encontrado. Verifica o regístrate.');
       }
     }
   };
@@ -74,12 +87,28 @@ export default function RestaurantePOS() {
   const total = order.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   const handleCharge = async () => {
-    if (order.length === 0) return;
+    // PARCHE: Validación de comanda vacía
+    if (order.length === 0) {
+      alert('⚠️ Error: No puedes cobrar una comanda vacía. Agrega productos al pedido.');
+      return;
+    }
+    // PARCHE: Validación de cajero válido
+    if (!currentCashier?.id) {
+      alert('⚠️ Error: ID de cajero inválido o sesión expirada.');
+      return;
+    }
+
     const description = isExpress ? `Exprés: ${expressName}` : selectedLocation;
-    const finalDescription = `Cobro de ${description} (Cajero: ${currentCashier?.name})`;
-    await recordFinance(total, finalDescription);
-    
+    if (isExpress && !expressName.trim()) {
+      alert('⚠️ Error: Debes ingresar el nombre para el servicio exprés.');
+      return;
+    }
+
+    setIsProcessing(true);
     try {
+      const finalDescription = `Cobro de ${description} (Cajero: ${currentCashier?.name})`;
+      await recordFinance(total, finalDescription);
+      
       const { data: comandaData, error: comandaError } = await supabase
         .from('comandas')
         .insert({
@@ -89,7 +118,7 @@ export default function RestaurantePOS() {
         .select('id')
         .single();
         
-      if (comandaError) throw comandaError;
+      if (comandaError) throw new Error(`Error al crear comanda: ${comandaError.message}`);
       
       if (comandaData) {
         const itemsToInsert = order.map(item => ({
@@ -103,15 +132,19 @@ export default function RestaurantePOS() {
           .from('comandas_items')
           .insert(itemsToInsert);
           
-        if (itemsError) throw itemsError;
+        if (itemsError) throw new Error(`Error al insertar items: ${itemsError.message}`);
       }
-    } catch (error) {
-      console.error('Error insertando la comanda:', error);
-    }
 
-    alert(`Cobro de $${total} procesado.\nIngreso registrado en Finanzas.`);
-    setOrder([]);
-    setExpressName('');
+      alert(`✅ Cobro de $${total} procesado.\nIngreso registrado en Finanzas y enviado a cocina.`);
+      setOrder([]);
+      setExpressName('');
+    } catch (error: any) {
+      // PARCHE: Manejo de errores detallado y notificado al usuario
+      console.error('Error insertando la comanda:', error);
+      alert(`❌ Error al procesar el cobro: ${error.message || 'Error desconocido. Inténtalo de nuevo.'}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handlePrint = () => {
@@ -296,10 +329,10 @@ export default function RestaurantePOS() {
             </button>
             <button
               onClick={handleCharge}
-              disabled={order.length === 0}
+              disabled={order.length === 0 || isProcessing}
               className="w-full py-4 bg-green-600 text-white rounded-lg font-bold text-lg hover:bg-green-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cobrar {isExpress ? 'Exprés' : 'Mesa'}
+              {isProcessing ? 'Procesando...' : `Cobrar ${isExpress ? 'Exprés' : 'Mesa'}`}
             </button>
           </div>
         </div>

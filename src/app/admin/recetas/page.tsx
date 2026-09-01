@@ -43,48 +43,55 @@ export default function RecetasPanel() {
     if (!ownerId) return;
     setLoading(true);
 
-    // Fetch Menu Items
-    const { data: menuData } = await supabase
-      .from('menu_items')
-      .select('id, nombre')
-      .eq('negocio_id', ownerId)
-      .order('nombre');
-    
-    if (menuData) setMenuItems(menuData as MenuItem[]);
-
-    // Fetch Inventario Items
-    const { data: invData } = await supabase
-      .from('inventario_items')
-      .select('id, nombre, unidad_medida')
-      .eq('negocio_id', ownerId)
-      .order('nombre');
-    
-    if (invData) setInventarioItems(invData as InventarioItem[]);
-
-    // Fetch Recetas (assuming recetas table has no negocio_id but belongs to menu_items that belong to negocio_id)
-    // We can fetch all recetas for the fetched menu_items
-    if (menuData && menuData.length > 0) {
-      const menuIds = menuData.map(m => m.id);
-      const { data: recData, error } = await supabase
-        .from('recetas')
-        .select(`
-          id, 
-          menu_item_id, 
-          ingrediente_id, 
-          cantidad_requerida,
-          inventario_items (
-            nombre,
-            unidad_medida
-          )
-        `)
-        .in('menu_item_id', menuIds);
+    try {
+      // Fetch Menu Items
+      const { data: menuData, error: menuError } = await supabase
+        .from('menu_items')
+        .select('id, nombre')
+        .eq('negocio_id', ownerId)
+        .order('nombre');
       
-      if (!error && recData) {
-        setRecetas(recData as any[]);
-      }
-    }
+      if (menuError) throw menuError;
+      setMenuItems((menuData as MenuItem[]) || []);
 
-    setLoading(false);
+      // Fetch Inventario Items
+      const { data: invData, error: invError } = await supabase
+        .from('inventario_items')
+        .select('id, nombre, unidad_medida')
+        .eq('negocio_id', ownerId)
+        .order('nombre');
+      
+      if (invError) throw invError;
+      setInventarioItems((invData as InventarioItem[]) || []);
+
+      // Fetch Recetas
+      if (menuData && menuData.length > 0) {
+        const menuIds = menuData.map(m => m.id);
+        const { data: recData, error } = await supabase
+          .from('recetas')
+          .select(`
+            id, 
+            menu_item_id, 
+            ingrediente_id, 
+            cantidad_requerida,
+            inventario_items (
+              nombre,
+              unidad_medida
+            )
+          `)
+          .in('menu_item_id', menuIds);
+        
+        if (error) throw error;
+        setRecetas((recData as any[]) || []);
+      } else {
+        setRecetas([]);
+      }
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+      alert('Error al cargar datos: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
   }, [ownerId]);
 
   useEffect(() => {
@@ -95,47 +102,58 @@ export default function RecetasPanel() {
     e.preventDefault();
     if (!selectedMenuItem || !selectedIngredient || !cantidadRequerida) return;
 
-    const { data, error } = await supabase
-      .from('recetas')
-      .insert({
-        menu_item_id: selectedMenuItem,
-        ingrediente_id: selectedIngredient,
-        cantidad_requerida: Number(cantidadRequerida)
-      })
-      .select(`
-        id, 
-        menu_item_id, 
-        ingrediente_id, 
-        cantidad_requerida,
-        inventario_items (
-          nombre,
-          unidad_medida
-        )
-      `)
-      .single();
+    const cantidad = Number(cantidadRequerida);
+    if (isNaN(cantidad) || cantidad <= 0) {
+      alert('Por favor ingresa una cantidad válida mayor a cero.');
+      return;
+    }
 
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('recetas')
+        .insert({
+          menu_item_id: selectedMenuItem,
+          ingrediente_id: selectedIngredient,
+          cantidad_requerida: cantidad
+        })
+        .select(`
+          id, 
+          menu_item_id, 
+          ingrediente_id, 
+          cantidad_requerida,
+          inventario_items (
+            nombre,
+            unidad_medida
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        setRecetas([...recetas, data as any]);
+        setSelectedIngredient('');
+        setCantidadRequerida('');
+      }
+    } catch (error: any) {
       alert('Error al agregar receta: ' + error.message);
-    } else if (data) {
-      setRecetas([...recetas, data as any]);
-      // Reset form but keep selected menu item
-      setSelectedIngredient('');
-      setCantidadRequerida('');
     }
   };
 
   const deleteReceta = async (id: string) => {
     if (!confirm('¿Estás seguro de eliminar este ingrediente de la receta?')) return;
 
-    const { error } = await supabase
-      .from('recetas')
-      .delete()
-      .eq('id', id);
+    try {
+      const { error } = await supabase
+        .from('recetas')
+        .delete()
+        .eq('id', id);
 
-    if (error) {
-      alert('Error al eliminar: ' + error.message);
-    } else {
+      if (error) throw error;
+      
       setRecetas(recetas.filter(r => r.id !== id));
+    } catch (error: any) {
+      alert('Error al eliminar: ' + error.message);
     }
   };
 
