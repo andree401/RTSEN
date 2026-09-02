@@ -36,7 +36,8 @@ export default function InventarioPanel() {
 
       if (error) throw error;
       setItems((data as InventarioItem[]) || []);
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       console.error('Error fetching inventario:', error);
       alert('Error al cargar el inventario: ' + error.message);
     } finally {
@@ -45,7 +46,10 @@ export default function InventarioPanel() {
   }, [ownerId]);
 
   useEffect(() => {
-    fetchInventario();
+    const timer = setTimeout(() => {
+      fetchInventario();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchInventario]);
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -78,7 +82,8 @@ export default function InventarioPanel() {
         setNewCantidad('');
         setNewUnidad('');
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       alert('Error al agregar al inventario: ' + error.message);
     }
   };
@@ -108,7 +113,8 @@ export default function InventarioPanel() {
       
       setItems(items.map(item => item.id === editingId ? { ...item, cantidad } : item));
       setEditingId(null);
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       alert('Error al actualizar cantidad: ' + error.message);
     }
   };
@@ -126,7 +132,8 @@ export default function InventarioPanel() {
       if (error) throw error;
       
       setItems(items.filter(item => item.id !== id));
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       alert('Error eliminando ingrediente: ' + error.message);
     }
   };

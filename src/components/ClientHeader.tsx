@@ -1,30 +1,34 @@
 'use client';
 
 import { useAppContext } from '../context/AppContext';
+import Link from 'next/link';
 
 export default function ClientHeader() {
   const { logout } = useAppContext();
 
   const handleLogout = async () => {
-    await logout();
-    window.location.href = '/';
+    try {
+      await logout();
+    } catch (e) {
+      console.error('Error logging out:', e);
+    }
   };
 
   return (
     <header className="bg-gray-900 text-white p-4 shadow-md print:hidden flex justify-between items-center">
       <nav className="container mx-auto flex gap-6 font-semibold items-center">
-        <a href="/" className="hover:text-blue-400 transition-colors">
+        <Link href="/" className="hover:text-blue-400 transition-colors">
           Finanzas
-        </a>
-        <a href="/restaurante" className="hover:text-blue-400 transition-colors">
+        </Link>
+        <Link href="/restaurante" className="hover:text-blue-400 transition-colors">
           Restaurante
-        </a>
-        <a href="/cocina" className="hover:text-orange-400 text-orange-500 transition-colors font-bold tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]">
+        </Link>
+        <Link href="/cocina" className="hover:text-orange-400 text-orange-500 transition-colors font-bold tracking-widest drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]">
           COCINA
-        </a>
-        <a href="/admin" className="hover:text-red-400 text-red-500 transition-colors">
+        </Link>
+        <Link href="/admin" className="hover:text-red-400 text-red-500 transition-colors">
           Admin
-        </a>
+        </Link>
       </nav>
       <button 
         onClick={handleLogout} 

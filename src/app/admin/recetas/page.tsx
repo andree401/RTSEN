@@ -82,11 +82,12 @@ export default function RecetasPanel() {
           .in('menu_item_id', menuIds);
         
         if (error) throw error;
-        setRecetas((recData as any[]) || []);
+        setRecetas((recData as unknown) as Receta[]);
       } else {
         setRecetas([]);
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       console.error('Error fetching data:', error);
       alert('Error al cargar datos: ' + error.message);
     } finally {
@@ -95,7 +96,10 @@ export default function RecetasPanel() {
   }, [ownerId]);
 
   useEffect(() => {
-    fetchData();
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchData]);
 
   const handleAddReceta = async (e: React.FormEvent) => {
@@ -131,11 +135,12 @@ export default function RecetasPanel() {
       if (error) throw error;
       
       if (data) {
-        setRecetas([...recetas, data as any]);
+        setRecetas([...recetas, (data as unknown) as Receta]);
         setSelectedIngredient('');
         setCantidadRequerida('');
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       alert('Error al agregar receta: ' + error.message);
     }
   };
@@ -152,7 +157,8 @@ export default function RecetasPanel() {
       if (error) throw error;
       
       setRecetas(recetas.filter(r => r.id !== id));
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       alert('Error al eliminar: ' + error.message);
     }
   };

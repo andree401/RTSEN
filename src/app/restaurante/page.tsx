@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAppContext, Dish } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -52,7 +52,8 @@ export default function RestaurantePOS() {
         alert(`✅ Registrado exitosamente.\nTU ID DE CAJERO ES: ${newId}\n¡Guárdalo bien!`);
         setCurrentCashier({ name: inputName, id: newId });
         setIsCashierLoggedIn(true);
-      } catch (error: any) {
+      } catch (err: unknown) {
+        const error = err as Error;
         console.error('Error al registrar:', error);
         alert(`❌ Error al registrar: ${error.message}`);
       } finally {
@@ -83,7 +84,8 @@ export default function RestaurantePOS() {
           setCurrentCashier({ name: data.nombre, id: data.pin });
           setIsCashierLoggedIn(true);
         }
-      } catch (error: any) {
+      } catch (err: unknown) {
+        const error = err as Error;
         console.error('Error al iniciar sesión:', error);
         alert(`❌ Error al iniciar sesión: ${error.message}`);
       } finally {
@@ -162,7 +164,8 @@ export default function RestaurantePOS() {
       alert(`✅ Cobro de $${total} procesado.\nIngreso registrado en Finanzas y enviado a cocina.`);
       setOrder([]);
       setExpressName('');
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       // PARCHE: Manejo de errores detallado y notificado al usuario
       console.error('Error insertando la comanda:', error);
       alert(`❌ Error al procesar el cobro: ${error.message || 'Error desconocido. Inténtalo de nuevo.'}`);

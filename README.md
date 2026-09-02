@@ -1,46 +1,89 @@
-# 🚀 RTSEN 3.0 (Fase 3) - ERP SaaS Multi-Tenant Nivel Corporativo
+# 🚀 RTSEN - ERP SaaS Multi-Tenant Nivel Corporativo
 
-Bienvenidos al repositorio oficial de **RTSEN**, la plataforma SaaS de administración restaurantera definitiva, escalable y 100% blindada.
+Bienvenidos al repositorio oficial de **RTSEN**, una plataforma SaaS de administración restaurantera escalable, robusta y diseñada para la nube. Este sistema incluye puntos de venta (POS), gestión de empleados, inventario automatizado y un Kitchen Display System (KDS) en tiempo real.
 
-## 🌟 Arquitectura del Proyecto
-*   **Frontend:** Next.js (App Router), React, Tailwind CSS.
-*   **Backend & Seguridad:** Supabase (PostgreSQL) con **Supabase Auth** y **Triggers Automáticos de Seguridad**.
-*   **Inteligencia Artificial:** `@google/genai` (Modelo Gemini-1.5-flash) integrado mediante BYOK (Bring Your Own Key).
-*   **Sincronización de Datos:** Supabase Realtime (WebSockets) con latencia <50ms.
-*   **Testing Estructural:** 
-    *   **Unitario/Lógico:** `Vitest` (Para matemáticas del POS).
-    *   **Destructivo/Visual (E2E):** `Playwright` (Aislado en la carpeta `/e2e`).
-*   **Despliegue Global:** Netlify.
+## 📖 1. Descripción del Proyecto
 
-## 🛠️ Características Actuales (Fase 3 Completada)
-El sistema opera de forma autónoma con los siguientes módulos de alto nivel:
+RTSEN es un sistema integral (ERP) que permite a los dueños de restaurantes gestionar sus operaciones de manera eficiente y centralizada. Cuenta con las siguientes características principales:
+- **Seguridad Autónoma:** Gestión de tenants y negocios integrada directamente en la base de datos para máxima seguridad.
+- **Sistema Global de Empleados:** Administración de cajeros y accesos mediante PINs universales.
+- **Kitchen Display System (KDS):** Sincronización de comandas en tiempo real con la cocina mediante WebSockets.
+- **Logística Autónoma:** Deducción de inventario automatizada (vía Triggers de BD) al registrar ventas, evitando cuellos de botella en el frontend.
 
-1.  **🔐 Seguridad Autónoma (Ghost Auth):** 
-    * La creación de negocios (`negocios`) ya no depende de la web, bloqueando ciberataques. Se utiliza un **Disparador de Postgres (Trigger)** en la tabla interna de `auth.users` que construye el negocio de forma simultánea en cuanto un usuario confirma su correo vía SMTP (Resend).
-    * Todos los datos del negocio tienen políticas RLS (Row Level Security) impenetrables.
-2.  **👨‍💼 Sistema Global de Empleados (Cajeros en la Nube):**
-    * La base de datos de cajeros (`empleados`) ha sido migrada a Supabase.
-    * Si el dueño cambia de dispositivo, los PINs (5 dígitos) de sus empleados siguen funcionando universalmente.
-3.  **🔥 Kitchen Display System (KDS) en Tiempo Real:**
-    * Centro de mando (`/cocina`) conectado a WebSockets.
-    * Alertas de pérdida de conexión y botones de "Fuego" para marcar órdenes completadas en Base de Datos.
-4.  **📦 Sistema Logístico Autónomo (Fase 2 Intelectual):**
-    * Panel de control de Inventarios y Recetas (`/admin/inventario`, `/admin/recetas`).
-    * **Trigger de Deducción:** Al vender un platillo en el POS, un script de Postgres revisa la receta y descuenta milimétricamente el inventario (ingredientes) sin intervención del Frontend, previniendo cuellos de botella.
+## 💻 2. Stack Tecnológico
 
-## 🗄️ Esquema de Base de Datos (Core)
-*   `negocios`: Creado vía *Postgres Trigger* de `auth.users`.
-*   `empleados`: `id`, `negocio_id`, `nombre`, `pin`.
-*   `menu_items`: `id`, `negocio_id`, `nombre`, `precio`.
-*   `finanzas_registros`: `id`, `negocio_id`, `monto`, `tipo` (Ingreso/Gasto), `categoria`, `descripcion` (Incluye cajero).
-*   `inventario_items`: `id`, `negocio_id`, `nombre_ingrediente`, `cantidad_disponible`, `unidad_medida`.
-*   `recetas`: `id`, `menu_item_id`, `ingrediente_id`, `cantidad_requerida`.
-*   `comandas`: `id`, `negocio_id`, `estado`, `total`, `cajero_id`.
-*   `comandas_items`: `id`, `comanda_id`, `menu_item_id`, `cantidad`.
+El proyecto está construido con las siguientes tecnologías modernas para garantizar alto rendimiento, mantenibilidad y escalabilidad:
 
-## 🗺️ Roadmap Futuro (Siguientes Pasos)
-*   [ ] **Dashboard de Ventas Multicaja:** Pantalla maestra para monitorear Múltiples Cajas y Empleados en vivo.
-*   [ ] **Monetización Web3/Stripe:** Cobro automatizado mensual a los dueños de restaurantes para poder utilizar la plataforma SaaS.
+- **Next.js:** Framework de React (App Router) para la interfaz de usuario, SSR y ruteo.
+- **Tailwind CSS:** Framework de CSS basado en utilidades para un diseño responsivo y moderno.
+- **Supabase (PostgreSQL):** Base de datos relacional, sistema de autenticación (Supabase Auth) y WebSockets (Supabase Realtime).
+- **Gemini (Google GenAI):** Integración de inteligencia artificial para funcionalidades analíticas avanzadas.
+- **Vitest:** Entorno de pruebas súper rápido para la lógica de negocio y tests unitarios.
+- **Playwright:** Framework para pruebas End-to-End (E2E), asegurando el funcionamiento correcto de los flujos críticos en el navegador.
 
-## 🤖 Directiva Primaria IA
-> Al iniciar cualquier sesión, debes leer este documento obligatoriamente. Cualquier cambio arquitectónico, de Base de Datos o de configuración general debe quedar documentado aquí antes de empujar el código a Producción.
+## ⚙️ 3. Instalación y Variables de Entorno
+
+Sigue estos pasos para levantar el entorno de desarrollo local:
+
+1. **Clonar el repositorio y acceder a la carpeta:**
+   ```bash
+   git clone <url-del-repositorio>
+   cd finanzas-web-pro
+   ```
+
+2. **Instalar las dependencias de Node.js:**
+   ```bash
+   npm install
+   ```
+
+3. **Configurar las variables de entorno:**
+   Crea un archivo llamado `.env.local` en la raíz del proyecto y agrega las siguientes variables.
+
+   ```env
+   # Credenciales de acceso a Supabase (Obligatorias)
+   NEXT_PUBLIC_SUPABASE_URL=https://<TU_PROYECTO>.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=<TU_ANON_KEY>
+   
+   # Clave de API de Gemini - Requerida para interactuar con los módulos de IA
+   GEMINI_API_KEY=<TU_GEMINI_API_KEY>
+   ```
+
+## 🧪 4. Comandos para Pruebas y Build
+
+El proyecto incluye varios scripts (configurados en `package.json`) para el desarrollo, las pruebas y el paso a producción:
+
+- **Servidor de Desarrollo:**
+  Inicia la aplicación con Hot-Reloading en http://localhost:3000.
+  ```bash
+  npm run dev
+  ```
+
+- **Construcción para Producción (Build):**
+  Genera la versión estática y optimizada de la aplicación.
+  ```bash
+  npm run build
+  ```
+
+- **Iniciar en Producción:**
+  Levanta el servidor utilizando los archivos optimizados previamente construidos.
+  ```bash
+  npm run start
+  ```
+
+- **Pruebas Unitarias (Vitest):**
+  Ejecuta la suite de pruebas lógicas y matemáticas del POS.
+  ```bash
+  npm run test
+  ```
+
+- **Pruebas E2E (Playwright):**
+  Ejecuta las pruebas visuales y los flujos destructivos directamente sobre navegadores reales.
+  ```bash
+  npx playwright test
+  ```
+
+- **Análisis de Código (Lint):**
+  Verifica el estilo y las reglas de código con ESLint.
+  ```bash
+  npm run lint
+  ```

@@ -11,6 +11,45 @@ type Comanda = {
   created_at: string;
 };
 
+const createExplosion = (x: number, y: number) => {
+  const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#ff0055'];
+  for (let i = 0; i < 40; i++) {
+    const particle = document.createElement('div');
+    document.body.appendChild(particle);
+    
+    const size = Math.random() * 12 + 6;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    
+    Object.assign(particle.style, {
+      position: 'fixed',
+      left: `${x}px`,
+      top: `${y}px`,
+      width: `${size}px`,
+      height: `${size}px`,
+      backgroundColor: color,
+      borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+      pointerEvents: 'none',
+      zIndex: '9999',
+      boxShadow: `0 0 ${Math.random() * 10 + 5}px ${color}`,
+      transition: 'transform 0.6s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.6s ease-out'
+    });
+
+    // Forzar reflow
+    particle.getBoundingClientRect();
+
+    const angle = Math.random() * Math.PI * 2;
+    const velocity = 80 + Math.random() * 200;
+    const tx = Math.cos(angle) * velocity;
+    const ty = Math.sin(angle) * velocity;
+    const rot = Math.random() * 360;
+
+    particle.style.transform = `translate(${tx}px, ${ty}px) scale(0) rotate(${rot}deg)`;
+    particle.style.opacity = '0';
+
+    setTimeout(() => particle.remove(), 600);
+  }
+};
+
 export default function CocinaKDS() {
   const [comandas, setComandas] = useState<Comanda[]>([]);
   // PARCHE: Añadido estado para manejar errores en la KDS
@@ -28,7 +67,8 @@ export default function CocinaKDS() {
       
       if (data) {
         const now = new Date().getTime();
-        const formatted = data.map((d: any) => ({
+        type ComandaData = { id: string; mesa: string; comandas_items: { nombre: string; notas?: string; cantidad?: number }[]; created_at: string };
+        const formatted = (data as unknown as ComandaData[]).map(d => ({
           id: d.id,
           mesa: d.mesa,
           items: d.comandas_items || [],
@@ -38,14 +78,17 @@ export default function CocinaKDS() {
         setComandas(formatted);
         setErrorStatus(null);
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       console.error('Error fetching comandas:', error);
       setErrorStatus(`⚠️ Error cargando comandas: ${error.message || 'Desconocido'}`);
     }
   };
 
   useEffect(() => {
-    fetchComandas();
+    const timer = setTimeout(() => {
+      fetchComandas();
+    }, 0);
     
     const interval = setInterval(() => {
       setComandas(prev => prev.map(c => ({
@@ -58,7 +101,7 @@ export default function CocinaKDS() {
     // PARCHE: Añadido manejo de estado de conexión para detectar caídas
     const subscription = supabase
       .channel('comandas_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comandas' }, payload => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comandas' }, () => {
         // Al haber cambios, volvemos a obtener todo para traer sus items fácilmente (polling inteligente tras notificación)
         fetchComandas();
       })
@@ -75,6 +118,7 @@ export default function CocinaKDS() {
       });
       
     return () => {
+      clearTimeout(timer);
       clearInterval(interval);
       supabase.removeChannel(subscription);
     };
@@ -105,45 +149,6 @@ export default function CocinaKDS() {
     setTimeout(() => {
       setComandas(prev => prev.filter(c => c.id !== id));
     }, 300);
-  };
-
-  const createExplosion = (x: number, y: number) => {
-    const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#ff0055']; // Colores agresivos/neón
-    for (let i = 0; i < 40; i++) {
-      const particle = document.createElement('div');
-      document.body.appendChild(particle);
-      
-      const size = Math.random() * 12 + 6;
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      
-      Object.assign(particle.style, {
-        position: 'fixed',
-        left: `${x}px`,
-        top: `${y}px`,
-        width: `${size}px`,
-        height: `${size}px`,
-        backgroundColor: color,
-        borderRadius: Math.random() > 0.5 ? '50%' : '2px', // Círculos y cuadrados
-        pointerEvents: 'none',
-        zIndex: '9999',
-        boxShadow: `0 0 ${Math.random() * 10 + 5}px ${color}`,
-        transition: 'transform 0.6s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.6s ease-out'
-      });
-
-      // Forzar reflow
-      particle.getBoundingClientRect();
-
-      const angle = Math.random() * Math.PI * 2;
-      const velocity = 80 + Math.random() * 200;
-      const tx = Math.cos(angle) * velocity;
-      const ty = Math.sin(angle) * velocity;
-      const rot = Math.random() * 360;
-
-      particle.style.transform = `translate(${tx}px, ${ty}px) scale(0) rotate(${rot}deg)`;
-      particle.style.opacity = '0';
-
-      setTimeout(() => particle.remove(), 600);
-    }
   };
 
   return (

@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       systemInstruction += `\n\nContexto de transacciones:\n${JSON.stringify(transactions)}`;
     }
 
-    const contents = (messages || []).map((m: any) => ({
+    const contents = (messages || []).map((m: { role: string; content: string }) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
     }));
@@ -42,7 +42,8 @@ export async function POST(req: Request) {
       content: response.text
     });
     
-  } catch (error: any) {
+  } catch (err: unknown) {
+    const error = err as Error;
     console.error("Gemini API Error:", error);
     return NextResponse.json(
       { error: error.message || 'Error interno del servidor.' },

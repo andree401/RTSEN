@@ -45,12 +45,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (ownerId) {
-      fetchMenu(ownerId);
-    }
-  }, [ownerId]);
-
   const fetchMenu = async (negocioId: string) => {
     const { data, error } = await supabase
       .from('menu_items')
@@ -63,6 +57,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setMenu(data.map(d => ({ id: d.id, name: d.nombre, price: d.precio })));
     }
   };
+
+  useEffect(() => {
+    if (ownerId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchMenu(ownerId);
+    }
+  }, [ownerId]);
 
   const login = async (email: string, password: string, isSignUp: boolean, restaurantName?: string) => {
     if (!email.trim() || !password.trim()) {
