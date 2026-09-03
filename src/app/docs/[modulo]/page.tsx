@@ -2,11 +2,11 @@ import React from 'react';
 import Link from 'next/link';
 
 interface Props {
-  params: { modulo: string };
+  params: Promise<{ modulo: string }>;
 }
 
-export default function ModuloDocPage({ params }: Props) {
-  const { modulo } = params;
+export default async function ModuloDocPage({ params }: Props) {
+  const { modulo } = await params;
 
   // Contenido de la documentación según el módulo
   const contentMap: Record<string, { title: string, content: string }> = {
