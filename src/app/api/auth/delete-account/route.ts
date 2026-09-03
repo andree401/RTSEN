@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     
     // Extraer token del header
-    const authHeader = req.headers.get('authorization') || req.headers.get('cookie');
+    // Extraer token del header (borrado porque usamos cookie/body directamente)
     
     // Creamos cliente supabase con contexto de servidor manual o instanciando
     // Para simplificar, asumiremos que si llega el request con cookies/sesion, extraemos el JWT.
@@ -42,8 +42,9 @@ export async function POST(req: Request) {
     await client.end();
     
     return NextResponse.json({ success: true, message: 'Usuario eliminado' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al borrar usuario:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

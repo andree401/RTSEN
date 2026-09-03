@@ -21,7 +21,7 @@ export default function FinancialCharts({ transactions }: FinancialChartsProps) 
   const COLORS = ['#4ade80', '#f87171'];
 
   // Agrupando por fecha
-  const dataByDate = transactions.reduce((acc: any, t) => {
+  const dataByDate = transactions.reduce((acc: Record<string, { date: string, Ingresos: number, Gastos: number }>, t) => {
     const dateStr = t.fecha || t.created_at || new Date().toISOString();
     const date = new Date(dateStr).toLocaleDateString();
     if (!acc[date]) {

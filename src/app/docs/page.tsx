@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 export default function DocsPage() {
   return (
@@ -36,9 +37,9 @@ export default function DocsPage() {
         </section>
         
         <div className="mt-10">
-          <a href="/" className="inline-block bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
+          <Link href="/" className="inline-block bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg transition-colors">
             Volver al Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     </div>
