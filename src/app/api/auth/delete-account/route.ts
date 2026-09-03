@@ -36,7 +36,10 @@ export async function POST(req: Request) {
     
     await client.connect();
     
-    // Eliminar de auth.users (el cascade eliminará lo demás si está configurado)
+    // Primero eliminar de negocios (esto hará cascade a menu, finanzas, inventario)
+    await client.query('DELETE FROM negocios WHERE id = $1', [userId]);
+    
+    // Luego eliminar de auth.users
     await client.query('DELETE FROM auth.users WHERE id = $1', [userId]);
     
     await client.end();

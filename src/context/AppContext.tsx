@@ -85,13 +85,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         alert('Error en registro: ' + error.message);
         return;
       }
+      if (data.user) {
+        // Asegurar que el negocio exista en la tabla para que no falle la llave foránea en otras tablas
+        await supabase.from('negocios').insert({
+          id: data.user.id,
+          nombre: restaurantName,
+          owner_email: email
+        }).select().single();
+      }
+
       if (data.session === null) {
         alert("Registro exitoso. Revisa tu correo o desactiva la confirmación de email en Supabase para poder entrar.");
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         alert('Error en inicio de sesión: ' + error.message);
+      } else if (data.user) {
+        // Fallback: Si no existía el registro por algún bug previo, crearlo
+        await supabase.from('negocios').upsert({
+          id: data.user.id,
+          nombre: data.user.user_metadata?.restaurant_name || 'Mi Restaurante',
+          owner_email: email
+        });
       }
     }
   };
