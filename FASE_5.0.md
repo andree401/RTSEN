@@ -1,4 +1,4 @@
-# FASE 4.0: Hacia la Dominación Mundial (Roadmap)
+# FASE 5.0: Hacia la Dominación Mundial (Roadmap)
 
 Este documento detalla las próximas grandes mejoras (Features) a implementar en el **Sistema Finanzas Web Pro** para convertirlo en un producto Enterprise de clase mundial (y para justificar cobrar suscripciones caras).
 
