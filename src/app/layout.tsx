@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import ClientHeader from "@/components/ClientHeader";
+import ContextualFooter from "@/components/ContextualFooter";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,9 +36,7 @@ export default function RootLayout({
           <main className="flex-1">
             {children}
           </main>
-          <footer className="py-4 text-center text-sm text-gray-500 print:hidden">
-            <a href="/docs" className="hover:underline text-blue-600">Documentación de Uso</a>
-          </footer>
+          <ContextualFooter />
         </AppProvider>
       </body>
     </html>

@@ -29,6 +29,9 @@ export default function ClientHeader() {
         <Link href="/admin" className="hover:text-red-400 text-red-500 transition-colors">
           Admin
         </Link>
+        <Link href="/configuracion" className="hover:text-gray-400 text-gray-300 transition-colors">
+          Configuración
+        </Link>
       </nav>
       <button 
         onClick={handleLogout} 
