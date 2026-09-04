@@ -1,8 +1,8 @@
 'use client';
-
 import { useState, useEffect } from 'react';
+import pkg from '../../package.json';
 
-const CURRENT_VERSION = '4.5.5';
+const CURRENT_VERSION = pkg.version;
 
 export default function ReleaseNotes() {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,8 +43,9 @@ export default function ReleaseNotes() {
               <div className="text-gray-300 space-y-3 mb-6">
                 <p>Novedades en esta actualización:</p>
                 <ul className="list-disc pl-5 space-y-2">
-                  <li>1. Mejoras en la base de datos.</li>
-                  <li>2. Correcciones en el punto de venta.</li>
+                  <li>Nuevo submódulo de Arquitectura de Recetas para asociar insumos a platillos.</li>
+                  <li>Descuento e integración automática de existencias con el inventario.</li>
+                  <li>Mejoras de rendimiento y correcciones de estabilidad en producción.</li>
                 </ul>
               </div>
               <div className="flex gap-3 mt-6">

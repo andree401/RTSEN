@@ -21,9 +21,14 @@ type Receta = {
   ingrediente_id: string;
   cantidad_requerida: number;
   inventario_items?: {
-    nombre: string;
-    unidad_medida: string;
-  };
+    nombre?: string;
+    nombre_ingrediente?: string;
+    unidad_medida?: string;
+  } | {
+    nombre?: string;
+    nombre_ingrediente?: string;
+    unidad_medida?: string;
+  }[];
 };
 
 export default function RecetasPanel() {
@@ -57,9 +62,9 @@ export default function RecetasPanel() {
       // Fetch Inventario Items
       const { data: invData, error: invError } = await supabase
         .from('inventario_items')
-        .select('id, nombre, unidad_medida')
+        .select('id, nombre:nombre_ingrediente, unidad_medida')
         .eq('negocio_id', ownerId)
-        .order('nombre');
+        .order('nombre_ingrediente');
       
       if (invError) throw invError;
       setInventarioItems((invData as InventarioItem[]) || []);
@@ -75,7 +80,8 @@ export default function RecetasPanel() {
             ingrediente_id, 
             cantidad_requerida,
             inventario_items (
-              nombre,
+              nombre:nombre_ingrediente,
+              nombre_ingrediente,
               unidad_medida
             )
           `)
@@ -126,7 +132,8 @@ export default function RecetasPanel() {
           ingrediente_id, 
           cantidad_requerida,
           inventario_items (
-            nombre,
+            nombre:nombre_ingrediente,
+            nombre_ingrediente,
             unidad_medida
           )
         `)
@@ -254,19 +261,27 @@ export default function RecetasPanel() {
                 <div key={platillo.id} className="bg-gray-900 rounded-lg p-4 border border-gray-700">
                   <h3 className="text-lg font-bold text-blue-300 mb-3">{platillo.nombre}</h3>
                   <ul className="space-y-2">
-                    {platillo.ingredientes.map(receta => (
-                      <li key={receta.id} className="flex justify-between items-center bg-gray-800 p-2 rounded border border-gray-700">
-                        <span className="text-gray-300">
-                          <span className="font-semibold text-white">{receta.cantidad_requerida} {receta.inventario_items?.unidad_medida}</span> de {receta.inventario_items?.nombre}
-                        </span>
-                        <button 
-                          onClick={() => deleteReceta(receta.id)}
-                          className="text-red-400 hover:text-red-300 text-sm font-medium"
-                        >
-                          Eliminar
-                        </button>
-                      </li>
-                    ))}
+                    {platillo.ingredientes.map(receta => {
+                      const invItem = Array.isArray(receta.inventario_items)
+                        ? receta.inventario_items[0]
+                        : receta.inventario_items;
+                      const nombreIng = invItem?.nombre || invItem?.nombre_ingrediente || 'Ingrediente';
+                      const unidadMed = invItem?.unidad_medida || '';
+
+                      return (
+                        <li key={receta.id} className="flex justify-between items-center bg-gray-800 p-2 rounded border border-gray-700">
+                          <span className="text-gray-300">
+                            <span className="font-semibold text-white">{receta.cantidad_requerida} {unidadMed}</span> de {nombreIng}
+                          </span>
+                          <button 
+                            onClick={() => deleteReceta(receta.id)}
+                            className="text-red-400 hover:text-red-300 text-sm font-medium"
+                          >
+                            Eliminar
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))
