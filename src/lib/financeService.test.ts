@@ -22,7 +22,7 @@ describe('FinanceService', () => {
       const mockEq = vi.fn().mockResolvedValue({ data: mockData, error: null });
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnValue({ eq: mockEq })
-      } as unknown as ReturnType<typeof supabase.from>);
+      } as never);
 
       const result = await FinanceService.getTransactionsByOwner('123');
       expect(result).toEqual(mockData);
@@ -36,7 +36,7 @@ describe('FinanceService', () => {
       const mockEq = vi.fn().mockResolvedValue({ data: null, error: mockError });
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnValue({ eq: mockEq })
-      } as unknown as ReturnType<typeof supabase.from>);
+      } as never);
 
       await expect(FinanceService.getTransactionsByOwner('123')).rejects.toThrow('Error al obtener transacciones: DB Error');
     });
@@ -47,7 +47,7 @@ describe('FinanceService', () => {
       const mockEq = vi.fn().mockResolvedValue({ error: null });
       vi.mocked(supabase.from).mockReturnValue({
         delete: vi.fn().mockReturnValue({ eq: mockEq })
-      } as unknown as ReturnType<typeof supabase.from>);
+      } as never);
 
       const result = await FinanceService.deleteTransaction(1);
       expect(result).toBe(true);
@@ -59,7 +59,7 @@ describe('FinanceService', () => {
       const mockEq = vi.fn().mockResolvedValue({ error: mockError });
       vi.mocked(supabase.from).mockReturnValue({
         delete: vi.fn().mockReturnValue({ eq: mockEq })
-      } as unknown as ReturnType<typeof supabase.from>);
+      } as never);
 
       await expect(FinanceService.deleteTransaction(1)).rejects.toThrow('Error al eliminar transacción: Delete Failed');
     });

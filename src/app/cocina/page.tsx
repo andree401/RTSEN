@@ -86,9 +86,7 @@ export default function CocinaKDS() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchComandas();
-    }, 0);
+    fetchComandas();
     
     const interval = setInterval(() => {
       setComandas(prev => prev.map(c => ({
@@ -118,7 +116,6 @@ export default function CocinaKDS() {
       });
       
     return () => {
-      clearTimeout(timer);
       clearInterval(interval);
       supabase.removeChannel(subscription);
     };
