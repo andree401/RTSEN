@@ -13,6 +13,7 @@ export default function ReleaseNotes() {
   useEffect(() => {
     const lastSeenVersion = localStorage.getItem('last_seen_version');
     if (lastSeenVersion !== CURRENT_VERSION) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsOpen(true);
     }
   }, []);
