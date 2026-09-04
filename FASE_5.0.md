@@ -1,4 +1,4 @@
-# FASE 4.0: Hacia la Dominación Mundial (Roadmap)
+# FASE 5.0: Hacia la Dominación Mundial (Roadmap)
 
 Este documento detalla las próximas grandes mejoras (Features) a implementar en el **Sistema Finanzas Web Pro** para convertirlo en un producto Enterprise de clase mundial (y para justificar cobrar suscripciones caras).
 
@@ -39,3 +39,10 @@ Este documento detalla las próximas grandes mejoras (Features) a implementar en
   - Planes de suscripción (Mensual / Anual).
   - Bloqueo automático del ERP si el tenant no ha pagado.
   - Portal para que el restaurante administre sus tarjetas y facturas.
+
+## 6. Sistema de Novedades y Soporte Directo 📢
+- **Objetivo:** Mantener a los clientes informados de las mejoras y darles un canal directo para quejarse (o agradecer).
+- **Implementación:** Modal de *Release Notes* y formulario de contacto.
+- **Características:**
+  - Al detectar un cambio de versión (ej. de v4.5.1 a v5.0.0), mostrar un *popup* automático con las novedades y cambios de la plataforma.
+  - Botón integrado de "Contactar al Desarrollador" que permita a los usuarios enviar un correo directo a `ownnera@gmail.com` con sugerencias o reportes de bugs.
