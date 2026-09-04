@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import ClientHeader from "@/components/ClientHeader";
 import ContextualFooter from "@/components/ContextualFooter";
+import ReleaseNotes from "@/components/ReleaseNotes";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +38,7 @@ export default function RootLayout({
             {children}
           </main>
           <ContextualFooter />
+          <ReleaseNotes />
         </AppProvider>
       </body>
     </html>
