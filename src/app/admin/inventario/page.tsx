@@ -30,9 +30,9 @@ export default function InventarioPanel() {
     try {
       const { data, error } = await supabase
         .from('inventario_items')
-        .select('id, nombre, cantidad, unidad_medida')
+        .select('id, nombre:nombre_ingrediente, cantidad:cantidad_disponible, unidad_medida')
         .eq('negocio_id', ownerId)
-        .order('nombre');
+        .order('nombre_ingrediente');
 
       if (error) throw error;
       setItems((data as InventarioItem[]) || []);
@@ -67,11 +67,11 @@ export default function InventarioPanel() {
         .from('inventario_items')
         .insert({
           negocio_id: ownerId,
-          nombre: newName,
-          cantidad,
+          nombre_ingrediente: newName,
+          cantidad_disponible: cantidad,
           unidad_medida: newUnidad
         })
-        .select()
+        .select('id, nombre:nombre_ingrediente, cantidad:cantidad_disponible, unidad_medida')
         .single();
 
       if (error) throw error;
@@ -105,7 +105,7 @@ export default function InventarioPanel() {
     try {
       const { error } = await supabase
         .from('inventario_items')
-        .update({ cantidad })
+        .update({ cantidad_disponible: cantidad })
         .eq('id', editingId)
         .eq('negocio_id', ownerId);
 

@@ -138,6 +138,9 @@ export default function RestaurantePOS() {
       const { data: comandaData, error: comandaError } = await supabase
         .from('comandas')
         .insert({
+          negocio_id: ownerId,
+          cajero_id: currentCashier?.id,
+          total: total,
           mesa: description,
           estado: 'pendiente'
         })
@@ -149,7 +152,7 @@ export default function RestaurantePOS() {
       if (comandaData) {
         const itemsToInsert = order.map(item => ({
           comanda_id: comandaData.id,
-          nombre: item.name,
+          menu_item_id: item.id,
           cantidad: item.quantity,
           // Si tuvieran notas se agregaría aquí. Agregamos las propiedades básicas.
         }));
