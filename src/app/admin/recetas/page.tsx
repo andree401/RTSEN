@@ -82,7 +82,7 @@ export default function RecetasPanel() {
           .in('menu_item_id', menuIds);
         
         if (error) throw error;
-        setRecetas((recData as unknown) as Receta[]);
+        setRecetas(((recData as unknown) as Receta[]) || []);
       } else {
         setRecetas([]);
       }
