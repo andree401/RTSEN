@@ -185,6 +185,9 @@ export default function ReleaseNotes() {
     localStorage.setItem('last_seen_version', CURRENT_VERSION);
     setIsOpen(false);
     setActiveTab('novedades');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('release_notes_closed'));
+    }
   };
 
   const handleSupportSubmit = (e: React.FormEvent) => {
