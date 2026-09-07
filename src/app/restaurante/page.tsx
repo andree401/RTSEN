@@ -110,6 +110,16 @@ export default function RestaurantePOS() {
     setOrder((prev) => prev.filter((item) => item.id !== id));
   };
 
+  const decrementFromOrder = (id: string) => {
+    setOrder((prev) =>
+      prev
+        .map((item) =>
+          item.id === id ? { ...item, quantity: item.quantity - 1 } : item
+        )
+        .filter((item) => item.quantity > 0)
+    );
+  };
+
   const total = order.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   const handleCharge = async () => {
@@ -164,7 +174,7 @@ export default function RestaurantePOS() {
         if (itemsError) throw new Error(`Error al insertar items: ${itemsError.message}`);
       }
 
-      alert(`✅ Cobro de $${total} procesado.\nIngreso registrado en Finanzas y enviado a cocina.`);
+      alert(`✅ Cobro de ₡${total.toLocaleString('es-CR')} procesado.\nIngreso registrado en Finanzas y enviado a cocina.`);
       setOrder([]);
       setExpressName('');
     } catch (err: unknown) {
@@ -175,10 +185,6 @@ export default function RestaurantePOS() {
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   if (!isCashierLoggedIn) {
@@ -240,9 +246,9 @@ export default function RestaurantePOS() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-gray-100 p-4 gap-4 print:p-0 print:h-auto print:bg-white">
-      {/* Lado Izquierdo: Ubicación y Menú (Oculto al imprimir) */}
-      <div className="flex-1 flex flex-col gap-4 print:hidden">
+    <div className="flex h-[calc(100vh-64px)] bg-gray-100 p-4 gap-4">
+      {/* Lado Izquierdo: Ubicación y Menú */}
+      <div className="flex-1 flex flex-col gap-4">
         {/* Selección de Ubicación */}
         <div className="bg-white p-4 rounded-xl shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -296,18 +302,18 @@ export default function RestaurantePOS() {
               <button
                 key={dish.id}
                 onClick={() => addToOrder(dish)}
-                className="p-4 border rounded-xl hover:shadow-md hover:border-blue-500 transition-all text-left flex flex-col justify-between h-24"
+                className="p-4 border rounded-xl hover:shadow-md hover:border-blue-500 transition-all text-left flex flex-col justify-between h-24 bg-white"
               >
                 <span className="font-semibold text-gray-800">{dish.name}</span>
-                <span className="text-blue-600 font-bold">${dish.price}</span>
+                <span className="text-blue-600 font-bold">₡{dish.price.toLocaleString('es-CR')}</span>
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Lado Derecho: Comanda (Visible en pantalla y al imprimir) */}
-      <div className="w-full lg:w-1/3 bg-white p-6 rounded-xl shadow-sm flex flex-col print:w-full print:shadow-none print:p-0">
+      {/* Lado Derecho: Comanda */}
+      <div className="w-full lg:w-1/3 bg-white p-6 rounded-xl shadow-sm flex flex-col">
         <div className="text-center mb-6 border-b pb-4 border-dashed border-gray-400">
           <h2 className="text-2xl font-bold text-gray-800">Comanda</h2>
           <p className="text-gray-600 font-medium text-lg mt-1">
@@ -318,25 +324,47 @@ export default function RestaurantePOS() {
           </p>
         </div>
 
-        <div className="flex-1 overflow-auto print:overflow-visible">
+        <div className="flex-1 overflow-auto">
           {order.length === 0 ? (
-            <p className="text-gray-400 text-center mt-10 print:hidden">La comanda está vacía</p>
+            <p className="text-gray-400 text-center mt-10">La comanda está vacía</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {order.map((item) => (
-                <li key={item.id} className="flex justify-between items-center group">
-                  <div className="flex-1">
+                <li key={item.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-200">
+                  <div className="flex-1 mr-2">
                     <div className="font-semibold text-gray-800">{item.name}</div>
-                    <div className="text-gray-500 text-sm">
-                      {item.quantity} x ${item.price} = ${item.quantity * item.price}
+                    <div className="text-gray-500 text-xs mt-0.5">
+                      ₡{item.price.toLocaleString('es-CR')} c/u = <span className="font-bold text-gray-700">₡{(item.quantity * item.price).toLocaleString('es-CR')}</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => removeFromOrder(item.id)}
-                    className="text-red-500 px-2 py-1 bg-red-50 rounded hover:bg-red-100 print:hidden opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    Quitar
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm">
+                      <button
+                        onClick={() => decrementFromOrder(item.id)}
+                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 hover:text-red-600 font-bold transition-colors"
+                        title="Restar uno"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center text-sm font-bold text-gray-800">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => addToOrder(item)}
+                        className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 font-bold transition-colors"
+                        title="Sumar uno más"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => removeFromOrder(item.id)}
+                      className="text-gray-400 hover:text-red-500 p-1 rounded transition-colors text-sm font-bold"
+                      title="Eliminar del pedido"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -346,17 +374,10 @@ export default function RestaurantePOS() {
         <div className="mt-6 pt-4 border-t border-dashed border-gray-400">
           <div className="flex justify-between text-xl font-bold text-gray-900 mb-6">
             <span>Total:</span>
-            <span>${total}</span>
+            <span className="text-blue-600 font-extrabold">₡{total.toLocaleString('es-CR')}</span>
           </div>
 
-          <div className="flex flex-col gap-3 print:hidden">
-            <button
-              onClick={handlePrint}
-              disabled={order.length === 0}
-              className="w-full py-3 bg-gray-800 text-white rounded-lg font-bold hover:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              Imprimir Comanda
-            </button>
+          <div className="flex flex-col gap-3">
             <button
               onClick={handleCharge}
               disabled={order.length === 0 || isProcessing}
