@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useAppContext, Dish } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
 import { playCashRegisterSound } from '@/lib/soundEffects';
@@ -18,7 +17,7 @@ type Cashier = {
 const TABLES = ['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4', 'Mesa 5', 'Barra'];
 
 export default function RestaurantePOS() {
-  const { menu, refreshMenu, addDish, recordFinance, ownerId } = useAppContext();
+  const { menu, refreshMenu, recordFinance, ownerId } = useAppContext();
   
   const [isCashierLoggedIn, setIsCashierLoggedIn] = useState(false);
   const [currentCashier, setCurrentCashier] = useState<Cashier | null>(null);
@@ -34,41 +33,12 @@ export default function RestaurantePOS() {
   
   const [order, setOrder] = useState<OrderItem[]>([]);
   const [dishSearch, setDishSearch] = useState('');
-  const [isSeeding, setIsSeeding] = useState(false);
 
   useEffect(() => {
     if (refreshMenu) {
       refreshMenu();
     }
   }, []);
-
-  const handleSeedDefaultMenu = async () => {
-    if (!ownerId) return;
-    setIsSeeding(true);
-    try {
-      const sampleDishes = [
-        { name: 'Casado Tradicional con Carne', price: 4500 },
-        { name: 'Tacos al Pastor (3 uds)', price: 3500 },
-        { name: 'Hamburguesa Artesanal Deluxe', price: 5200 },
-        { name: 'Pizza Personal Margarita', price: 4800 },
-        { name: 'Gallo Pinto Especial', price: 3200 },
-        { name: 'Refresco Natural del Día', price: 1500 },
-        { name: 'Café Chorreado Típico', price: 1200 },
-      ];
-
-      for (const dish of sampleDishes) {
-        await addDish(dish);
-      }
-      if (refreshMenu) {
-        await refreshMenu();
-      }
-    } catch (e) {
-      console.error('Error poblando menú:', e);
-      alert('Error al poblar menú de ejemplo.');
-    } finally {
-      setIsSeeding(false);
-    }
-  };
 
   const filteredMenu = menu.filter((dish) =>
     dish.name?.toLowerCase().includes(dishSearch.toLowerCase())
@@ -370,33 +340,23 @@ export default function RestaurantePOS() {
 
           <div className="flex-1 overflow-auto">
             {menu.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center p-6 text-center bg-slate-50/60 rounded-2xl border-2 border-dashed border-slate-200 my-auto">
-                <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-3xl mb-3 shadow-sm">
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-slate-50/60 rounded-2xl border-2 border-dashed border-slate-200 my-auto">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-2xl mb-3">
                   🍽️
                 </div>
                 <h3 className="text-base font-bold text-slate-800 mb-1">
-                  No hay platillos en el menú
+                  No hay menú disponible
                 </h3>
-                <p className="text-xs text-slate-500 max-w-xs mb-5">
-                  Aún no tienes platillos registrados para tu restaurante. Puedes cargar un menú de ejemplo con un clic o crearlos en el panel de administración.
+                <p className="text-xs text-slate-500 max-w-xs mb-4">
+                  Actualmente no hay platillos registrados en el sistema. Contacta al administrador para que configure el menú.
                 </p>
-                <div className="flex flex-wrap gap-2.5 justify-center">
-                  <button
-                    onClick={handleSeedDefaultMenu}
-                    disabled={isSeeding}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <span>⚡</span>
-                    <span>{isSeeding ? 'Creando Platillos...' : 'Cargar Menú de Ejemplo'}</span>
-                  </button>
-                  <Link
-                    href="/admin"
-                    className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
-                  >
-                    <span>⚙️</span>
-                    <span>Ir a Administrador</span>
-                  </Link>
-                </div>
+                <button
+                  onClick={() => refreshMenu && refreshMenu()}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>🔄</span>
+                  <span>Comprobar actualización</span>
+                </button>
               </div>
             ) : filteredMenu.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
