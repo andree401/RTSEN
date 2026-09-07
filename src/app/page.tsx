@@ -11,8 +11,10 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import AIChat from '../components/AIChat';
 
+import Link from 'next/link';
+
 export default function Dashboard() {
-  const { ownerId } = useAppContext();
+  const { ownerId, activeRole } = useAppContext();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -201,6 +203,40 @@ export default function Dashboard() {
 
     doc.save(`reporte_financiero_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
+
+  // Protección de Privacidad Financiera Zero-Trust
+  if (activeRole === 'cajero' || activeRole === 'cocina' || activeRole === 'admin') {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full text-center shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 text-3xl flex items-center justify-center mx-auto mb-4 border border-amber-200">
+            🔒
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-1">Área Financiera Exclusiva</h2>
+          <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+            Tu perfil actual ({activeRole.toUpperCase()}) está configurado para operaciones de estación. El balance neto y los ingresos son de acceso exclusivo para el Propietario.
+          </p>
+          <div className="flex flex-col gap-2">
+            {activeRole === 'cajero' && (
+              <Link href="/restaurante" className="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20">
+                Ir al Punto de Venta (POS) ➔
+              </Link>
+            )}
+            {activeRole === 'cocina' && (
+              <Link href="/cocina" className="py-2.5 px-4 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-orange-600/20">
+                Ir a Cocina KDS ➔
+              </Link>
+            )}
+            {activeRole === 'admin' && (
+              <Link href="/admin" className="py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-rose-600/20">
+                Ir a Panel de Menú y Recetas ➔
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-sky-50/30 text-slate-800 p-6 md:p-10 relative overflow-hidden">

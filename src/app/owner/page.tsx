@@ -15,7 +15,7 @@ export default function OwnerMasterPortal() {
     totalComandasActivas: 0,
     ingresosHoy: 0,
   });
-  const [empleados, setEmpleados] = useState<Array<{ id: string; nombre: string; pin: string }>>([]);
+  const [empleados, setEmpleados] = useState<Array<{ id: string; nombre: string; pin: string; rol?: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -88,7 +88,7 @@ export default function OwnerMasterPortal() {
       // 1. Empleados registrados
       const { data: empData } = await supabase
         .from('empleados')
-        .select('id, nombre, pin')
+        .select('id, nombre, pin, rol')
         .eq('negocio_id', ownerId);
 
       if (empData) {
@@ -464,7 +464,9 @@ export default function OwnerMasterPortal() {
                   <div key={emp.id} className="bg-slate-900/60 border border-slate-700/70 p-3.5 rounded-xl flex items-center justify-between">
                     <div>
                       <div className="font-bold text-slate-200 text-xs">{emp.nombre}</div>
-                      <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Cajero POS</div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                        {emp.rol === 'admin' ? '⚙️ Administrador' : emp.rol === 'cocina' ? '🍳 Cocina KDS' : '💵 Cajero POS'}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="bg-violet-950 border border-violet-800/60 text-violet-300 font-mono font-bold text-xs px-2.5 py-1 rounded-lg tracking-widest shadow-sm">

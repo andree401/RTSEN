@@ -5,9 +5,11 @@ import ClientHeader from '../src/components/ClientHeader';
 // Mock del contexto para simular que hay sesión iniciada
 vi.mock('../src/context/AppContext', () => ({
   useAppContext: () => ({
+    ownerId: 'test-user',
     user: { id: 'test-user', email: 'test@example.com' },
     currentNegocio: { id: 'negocio-1', nombre: 'Restaurante Test' },
     signOut: vi.fn(),
+    logout: vi.fn(),
   }),
 }));
 

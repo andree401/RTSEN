@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAppContext, Dish } from '@/context/AppContext';
 
 export default function AdminPanel() {
-  const { menu, addDish, updateDish, deleteDish } = useAppContext();
+  const { menu, addDish, updateDish, deleteDish, activeRole } = useAppContext();
   
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
@@ -13,6 +13,29 @@ export default function AdminPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
+
+  // Protección de Estación: Cajeros y Cocineros no pueden alterar precios o menú
+  if (activeRole === 'cajero' || activeRole === 'cocina') {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full text-center shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 text-3xl flex items-center justify-center mx-auto mb-4 border border-rose-200">
+            ⛔
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-1">Acceso Administrativo Restringido</h2>
+          <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+            Tu estación actual ({activeRole.toUpperCase()}) no tiene permisos para modificar el catálogo de precios o existencias del restaurante.
+          </p>
+          <a
+            href={activeRole === 'cajero' ? '/restaurante' : '/cocina'}
+            className="inline-block py-2.5 px-5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md transition-all"
+          >
+            Volver a mi Estación de Trabajo
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   const handleAddDish = (e: React.FormEvent) => {
     e.preventDefault();

@@ -18,7 +18,7 @@ const TABLES = ['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4', 'Mesa 5', 'Barra'];
 const CASHIER_STORAGE_KEY = 'pos_cashier_session';
 
 export default function RestaurantePOS() {
-  const { menu, refreshMenu, recordFinance, ownerId } = useAppContext();
+  const { menu, refreshMenu, recordFinance, ownerId, currentEmployee, loginWithPin } = useAppContext();
   
   const [isCashierLoggedIn, setIsCashierLoggedIn] = useState(false);
   const [currentCashier, setCurrentCashier] = useState<Cashier | null>(null);
@@ -42,8 +42,14 @@ export default function RestaurantePOS() {
   const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const menuFetchedRef = useRef(false);
 
-  // Restaurar sesión de cajero desde sessionStorage si existe
+  // Restaurar sesión de cajero desde AppContext o sessionStorage
   useEffect(() => {
+    if (currentEmployee) {
+      setCurrentCashier({ name: currentEmployee.nombre, id: currentEmployee.pin });
+      setIsCashierLoggedIn(true);
+      return;
+    }
+
     try {
       const saved = sessionStorage.getItem(CASHIER_STORAGE_KEY);
       if (saved) {
@@ -56,7 +62,7 @@ export default function RestaurantePOS() {
     } catch (err) {
       console.warn('Error recuperando sesión de cajero:', err);
     }
-  }, []);
+  }, [currentEmployee]);
 
   // Limpieza de timeouts al desmontar el componente para evitar fugas de memoria
   useEffect(() => {
@@ -171,11 +177,23 @@ export default function RestaurantePOS() {
 
       setIsProcessing(true);
       try {
+        // Intentar autenticar con el servicio seguro multi-rol
+        try {
+          const emp = await loginWithPin(cleanPin, 'cajero');
+          const cashierData: Cashier = { name: emp.nombre, id: emp.pin };
+          sessionStorage.setItem(CASHIER_STORAGE_KEY, JSON.stringify(cashierData));
+          setCurrentCashier(cashierData);
+          setIsCashierLoggedIn(true);
+          setInputId('');
+          return;
+        } catch {
+          // Fallback a consulta directa si loginWithPin no encuentra rol cajero específico
+        }
+
         const { data, error } = await supabase
           .from('empleados')
           .select('id, nombre, pin, negocio_id')
           .eq('pin', cleanPin)
-          .eq('negocio_id', ownerId)
           .maybeSingle();
 
         if (error) {

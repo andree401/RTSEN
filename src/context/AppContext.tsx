@@ -11,9 +11,24 @@ export type Dish = {
   price: number;
 };
 
+export type UserRole = 'owner' | 'admin' | 'cajero' | 'cocina' | null;
+
+export type EmployeeSession = {
+  id: string;
+  nombre: string;
+  pin: string;
+  negocio_id: string;
+  rol: 'cajero' | 'admin' | 'cocina';
+  restaurante?: string;
+};
+
 type AppContextType = {
   ownerId: string | null;
+  activeRole: UserRole;
+  currentEmployee: EmployeeSession | null;
   login: (email: string, password: string, isSignUp: boolean, restaurantName?: string) => Promise<void>;
+  loginWithPin: (pin: string, expectedRole?: string) => Promise<EmployeeSession>;
+  setStationSession: (employee: EmployeeSession) => void;
   logout: () => Promise<void>;
   
   menu: Dish[];
@@ -28,21 +43,43 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [activeRole, setActiveRole] = useState<UserRole>(null);
+  const [currentEmployee, setCurrentEmployee] = useState<EmployeeSession | null>(null);
   const [menu, setMenu] = useState<Dish[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Check initial session
+    // Restaurar sesión de empleado de estación si existe
+    try {
+      const savedEmp = sessionStorage.getItem('fw_station_employee');
+      if (savedEmp) {
+        const parsed = JSON.parse(savedEmp);
+        if (parsed?.negocio_id) {
+          setCurrentEmployee(parsed);
+          setActiveRole(parsed.rol || 'cajero');
+          setOwnerId(prev => prev || parsed.negocio_id);
+        }
+      }
+    } catch {}
+
+    // Check initial session de Supabase (Dueño)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setOwnerId(session.user.id);
+        setActiveRole('owner');
       }
       setIsLoaded(true);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setOwnerId(session?.user?.id || null);
+      if (session?.user?.id) {
+        setOwnerId(session.user.id);
+        setActiveRole('owner');
+      } else if (!sessionStorage.getItem('fw_station_employee')) {
+        setOwnerId(null);
+        setActiveRole(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -145,15 +182,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithPin = async (pin: string, expectedRole?: string): Promise<EmployeeSession> => {
+    const res = await fetch('/api/auth/pin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin, role: expectedRole })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'PIN incorrecto o no autorizado');
+    }
+
+    const employee: EmployeeSession = data.employee;
+    setStationSession(employee);
+    return employee;
+  };
+
+  const setStationSession = (employee: EmployeeSession) => {
+    setCurrentEmployee(employee);
+    setActiveRole(employee.rol || 'cajero');
+    setOwnerId(employee.negocio_id);
+    try {
+      sessionStorage.setItem('fw_station_employee', JSON.stringify(employee));
+    } catch {}
+  };
+
   const logout = async () => {
     try {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('fw_last_activity_timestamp');
         sessionStorage.removeItem('fw_owner_authenticated');
+        sessionStorage.removeItem('fw_station_employee');
+        sessionStorage.removeItem('pos_cashier_session');
       }
     } catch {}
     await supabase.auth.signOut();
     setOwnerId(null);
+    setActiveRole(null);
+    setCurrentEmployee(null);
     setMenu([]);
   };
 
@@ -271,108 +338,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   if (!isLoaded) return null;
 
   if (!ownerId) {
-    return <AuthScreen onLogin={login} />;
+    return <LoginPage />;
   }
-
-  return (
-    <AppContext.Provider value={{ ownerId, login, logout, menu, refreshMenu, addDish, updateDish, deleteDish, recordFinance }}>
-      {children}
-      <SessionWarningModal
-        isOpen={isWarningOpen}
-        remainingSeconds={remainingSeconds}
-        onStayLoggedIn={resetTimer}
-        onLogout={logout}
-      />
-    </AppContext.Provider>
-  );
-}
-
-function AuthScreen({ onLogin }: { onLogin: (email: string, pass: string, isSignUp: boolean, name?: string) => Promise<void> }) {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [restaurantName, setRestaurantName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    try {
-      await onLogin(email, password, isSignUp, isSignUp ? restaurantName : undefined);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/30 to-sky-50/40 p-4">
-      <div className="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl shadow-indigo-500/10 border border-slate-200/80 w-full max-w-sm">
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white text-2xl shadow-md shadow-indigo-500/25 mb-3">
-            ⚡
-          </div>
-          <h1 className="text-2xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 tracking-tight">
-            RTSEN ERP
-          </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium text-center">
-            {isSignUp ? 'Crea la cuenta de tu restaurante' : 'Iniciar Sesión en el Sistema'}
-          </p>
-        </div>
-        <div className="flex flex-col gap-3.5">
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Correo Electrónico</label>
-            <input 
-              type="email" 
-              placeholder="tu@restaurante.com" 
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              disabled={isLoading}
-              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Contraseña</label>
-            <input 
-              type="password" 
-              placeholder="••••••••" 
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              disabled={isLoading}
-              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all"
-            />
-          </div>
-          {isSignUp && (
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nombre del Restaurante</label>
-              <input 
-                type="text" 
-                placeholder="Ej. Taquería El Sol" 
-                value={restaurantName} 
-                onChange={e => setRestaurantName(e.target.value)} 
-                disabled={isLoading}
-                className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all"
-              />
-            </div>
-          )}
-          <button 
-            onClick={handleSubmit} 
-            disabled={isLoading}
-            className="w-full mt-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:opacity-95 text-white font-bold py-2.5 rounded-xl shadow-md shadow-indigo-600/20 transition-all disabled:opacity-75 disabled:cursor-not-allowed text-sm"
-          >
-            {isLoading ? 'Cargando...' : (isSignUp ? 'Crear Restaurante' : 'Ingresar al Sistema')}
-          </button>
-          
-          <button 
-            onClick={() => setIsSignUp(!isSignUp)}
-            disabled={isLoading}
-            className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline text-center font-medium mt-1 disabled:opacity-50"
-          >
-            {isSignUp ? '¿Ya tienes cuenta? Ingresa aquí' : '¿No tienes cuenta? Regístrate gratis'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function useAppContext() {
   const context = useContext(AppContext);

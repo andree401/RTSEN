@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 export default function ClientHeader() {
-  const { logout } = useAppContext();
+  const { logout, ownerId, activeRole, currentEmployee } = useAppContext();
   const pathname = usePathname();
 
   const handleLogout = async () => {
@@ -16,18 +16,25 @@ export default function ClientHeader() {
     }
   };
 
-  // En la estación de Cocina KDS y en el POS de Restaurante, aislamos la barra para que
-  // ni los cajeros ni los cocineros tengan acceso directo a Admin o Finanzas.
   const currentPath = pathname || '';
-  const isTerminalMode = currentPath.startsWith('/cocina') || currentPath.startsWith('/restaurante');
+  const isLoginPage = currentPath.startsWith('/login');
+  const isSysOpsPage = currentPath.startsWith('/sys-ops');
+  const isTerminalMode = currentPath.startsWith('/cocina') || currentPath.startsWith('/restaurante') || activeRole === 'cajero' || activeRole === 'cocina';
   const isOwnerMode = currentPath.startsWith('/owner');
+  const isAdminRole = activeRole === 'admin';
+
+  // Si estamos en la página de login o en el portal secreto, no mostrar cabecera regular
+  if (isLoginPage || isSysOpsPage) return null;
 
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 px-6 py-3.5 shadow-sm print:hidden">
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white text-lg shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+            <span 
+              className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white text-lg shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform cursor-pointer"
+              title="RTSEN ERP"
+            >
               ⚡
             </span>
             <div className="flex flex-col">
@@ -44,9 +51,35 @@ export default function ClientHeader() {
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <span>🔒</span>
-                <span>Modo Estación Operativa Aislada</span>
+                <span>
+                  {currentEmployee ? `Turno: ${currentEmployee.nombre} (${currentEmployee.rol})` : 'Modo Estación Operativa'}
+                </span>
               </span>
             </div>
+          ) : isAdminRole ? (
+            <nav className="flex gap-2 font-medium items-center text-sm">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                ⚙️ Perfil Administrador
+              </span>
+              <Link 
+                href="/admin" 
+                className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-rose-600 hover:bg-rose-50/80 transition-all font-semibold"
+              >
+                Menú & Precios
+              </Link>
+              <Link 
+                href="/admin/inventario" 
+                className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-rose-600 hover:bg-rose-50/80 transition-all"
+              >
+                Inventario
+              </Link>
+              <Link 
+                href="/admin/recetas" 
+                className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-rose-600 hover:bg-rose-50/80 transition-all"
+              >
+                Recetas
+              </Link>
+            </nav>
           ) : (
             <nav className="flex gap-2 font-medium items-center text-sm">
               <Link 
@@ -84,8 +117,7 @@ export default function ClientHeader() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Botón de acceso exclusivo al Portal del Dueño: NUNCA visible en estaciones operativas aisladas */}
-          {!isTerminalMode && (
+          {!isTerminalMode && !isAdminRole && (
             <Link
               href="/owner"
               className={`text-xs font-black px-3.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 shadow-sm ${
@@ -100,12 +132,21 @@ export default function ClientHeader() {
             </Link>
           )}
 
-          <button 
-            onClick={handleLogout} 
-            className="text-xs font-semibold bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 px-3.5 py-1.5 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
-          >
-            {isTerminalMode ? 'Cerrar Estación' : 'Salir'}
-          </button>
+          {ownerId ? (
+            <button 
+              onClick={handleLogout} 
+              className="text-xs font-semibold bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 px-3.5 py-1.5 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
+            >
+              {isTerminalMode ? 'Cerrar Turno' : 'Salir'}
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className="text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+            >
+              Iniciar Sesión
+            </Link>
+          )}
         </div>
       </div>
     </header>
