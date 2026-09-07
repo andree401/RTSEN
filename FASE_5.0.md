@@ -47,7 +47,7 @@ Este documento detalla las próximas grandes mejoras (Features) a implementar en
   - Al detectar un cambio de versión (ej. de v4.5.1 a v5.0.0), mostrar un *popup* automático con las novedades y cambios de la plataforma.
   - Botón integrado de "Contactar al Desarrollador" que permita a los usuarios enviar un correo directo a `ownnera@gmail.com` con sugerencias o reportes de bugs.
 
-## 7. Blindaje de Sesión y Autenticación en Producción (v5.7.0) 🛡️
-- **Estado:** ✅ Completado e implementado en v5.7.0.
+## 7. Blindaje de Sesión y Autenticación en Producción (v4.7.0) 🛡️
+- **Estado:** ✅ Completado e implementado en v4.7.0.
 - **Detalle:** Timeout de inactividad de 15 minutos con advertencia visual de 2 minutos (contador regresivo interactivo) y sincronización entre pestañas para impedir accesos desatendidos a las finanzas del restaurante.
 
