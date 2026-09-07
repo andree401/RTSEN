@@ -2,6 +2,7 @@
 
 import React from 'react';
 import CerrarCuentaBtn from '@/components/CerrarCuentaBtn';
+import BillingManager from '@/components/BillingManager';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/context/AppContext';
@@ -50,12 +51,15 @@ export default function ConfiguracionPage() {
   };
 
   return (
-    <div className="container mx-auto p-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Configuración</h1>
+    <div className="container mx-auto p-8 max-w-4xl space-y-8">
+      <h1 className="text-3xl font-bold text-gray-800">Configuración del Sistema</h1>
       
-      <div className="bg-white rounded shadow p-6 max-w-2xl">
-        <h2 className="text-xl font-semibold mb-4">Ajustes de la cuenta</h2>
-        <p className="text-gray-600 mb-6">
+      {/* Módulo de Suscripción y Facturación */}
+      <BillingManager />
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 className="text-xl font-semibold mb-2 text-slate-800">Ajustes de la cuenta</h2>
+        <p className="text-slate-600 mb-6 text-sm">
           Aquí puedes administrar las opciones avanzadas de tu cuenta, como darte de baja del sistema.
         </p>
 

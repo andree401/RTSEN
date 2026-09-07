@@ -2,6 +2,13 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import ClientHeader from '../src/components/ClientHeader';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+  usePathname: () => '/',
+}));
+
 // Mock del contexto para simular que hay sesión iniciada
 vi.mock('../src/context/AppContext', () => ({
   useAppContext: () => ({

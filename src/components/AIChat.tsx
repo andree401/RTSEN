@@ -70,7 +70,7 @@ export default function AIChat({ isOpen, onClose, apiKey, transactions }: AIChat
   ];
 
   return (
-    <div className="fixed bottom-0 right-4 sm:right-8 w-96 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-t-2xl shadow-2xl flex flex-col z-50 overflow-hidden" style={{ height: '540px' }}>
+    <div className="fixed bottom-14 sm:bottom-16 right-4 sm:right-8 w-96 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col z-[9999] overflow-hidden" style={{ height: '540px' }}>
       {/* Header */}
       <div className="p-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white rounded-t-2xl flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2">

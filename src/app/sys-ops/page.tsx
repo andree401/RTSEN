@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 
 interface SaaSMetricsSummary {
   totalNegocios: number;
@@ -154,6 +155,15 @@ export default function SysOpsSecretCenter() {
             </button>
           </form>
 
+          <div className="mt-4">
+            <Link
+              href="/"
+              className="text-xs text-slate-400 hover:text-slate-200 transition-colors inline-flex items-center gap-1 font-sans"
+            >
+              ← Volver a la aplicación
+            </Link>
+          </div>
+
           <div className="mt-6 pt-4 border-t border-slate-800 text-[11px] text-slate-600 font-sans">
             RTSEN ERP SaaS Infrastructure • Acceso Restringido
           </div>
@@ -206,6 +216,13 @@ export default function SysOpsSecretCenter() {
               >
                 Bloquear Acceso
               </button>
+              <Link
+                href="/"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
+              >
+                <span>🏠</span>
+                <span>Ir a la App</span>
+              </Link>
             </div>
           </div>
         </header>

@@ -11,34 +11,45 @@ Este documento detalla las próximas grandes mejoras (Features) a implementar en
   - Formato financiero en Colones (₡) en estadísticas, tablas, gráficos y exportaciones.
 
 ## 2. Actualizaciones Reactivas y en Tiempo Real ⚡
+- **Estado:** ✅ 100% Completado.
 - **Objetivo:** Experiencia de usuario (UX) 100% fluida, sin necesidad de recargar la página.
-- **Implementación:** Migración a `React Query` o uso de `SWR`.
-- **Características:**
-  - *Optimistic Updates:* Cuando se elimina o agrega una transacción, la UI se actualiza instantáneamente asumiendo éxito, sincronizando con Supabase de fondo.
-  - Sincronización en vivo entre la interfaz de los meseros y la pantalla de cocina (KDS).
+- **Implementación:** Sincronización en vivo con Supabase Realtime (`postgres_changes`) y Optimistic Updates en `src/context/AppContext.tsx`.
+- **Características Implementadas:**
+  - *Optimistic Updates:* Inserción, actualización y eliminación de platillos (`addDish`, `updateDish`, `deleteDish`) se reflejan de inmediato en la UI con rollback atómico si la red o Supabase fallan.
+  - Sincronización en vivo bidireccional entre la interfaz de los meseros/cajeros y la pantalla de cocina (KDS) mediante canales Realtime dedicados con desuscripción y drenado de memoria garantizados.
 
 ## 3. Seguridad Estricta Multi-Tenant (Supabase RLS) 🔒
+- **Estado:** ✅ 100% Ejecutado y Activo en Base de Datos PostgreSQL.
 - **Objetivo:** Evitar que el Restaurante A espíe los números del Restaurante B por error de código o hackeo.
-- **Implementación:** Políticas de *Row Level Security* directo en la base de datos de PostgreSQL.
+- **Implementación:** Políticas de *Row Level Security* estricto aplicadas directamente en PostgreSQL (`DATABASE_URL`) vía `auth.uid()`.
 - **Características:**
-  - Restricción criptográfica a nivel base de datos para que el API solo devuelva filas donde `negocio_id == auth.uid()`.
-  - Auditoría de seguridad sobre todas las tablas operativas.
+  - Restricción criptográfica a nivel base de datos para que el API solo devuelva filas donde `negocio_id == auth.uid()` o `id == auth.uid()`.
+  - Aislamiento completo sobre `negocios`, `menu_items`, `empleados`, `finanzas_registros`, `comandas` y `comandas_items`.
+  - Script ejecutado: `scripts/migrate-rls-strict.sql`.
 
 ## 4. Modo Progressive Web App (PWA) 📱
+- **Estado:** ✅ 100% Completado e Implementado.
 - **Objetivo:** Llevar la aplicación a los bolsillos (y tablets) de los empleados sin pasar por la App Store.
-- **Implementación:** Configuración de Service Workers y `manifest.json`.
+- **Implementación:** Configuración de Service Workers (`public/sw.js`), `public/manifest.json`, iconos adaptativos y componente `PwaRegister.tsx`.
 - **Características:**
-  - Icono instalable en Android e iOS (pantalla de inicio).
-  - Carga instantánea con caché (funcionalidad offline parcial).
-  - Notificaciones push para la cocina cuando entre un pedido urgente.
+  - Icono instalable en Android, iOS y Desktop como aplicación nativa independiente (`standalone`).
+  - Estrategia de caché Network-First con fallback offline en Service Worker.
+  - Banner inteligente y no intrusivo de instalación (`beforeinstallprompt`) con persistencia en localStorage.
+
 
 ## 5. Módulo de Suscripciones y Facturación (Stripe Billing) 💳
-- **Objetivo:** Generar dinero, el motor del capitalismo.
-- **Implementación:** Integración de la API de Stripe para pagos recurrentes.
-- **Características:**
-  - Planes de suscripción (Mensual / Anual).
-  - Bloqueo automático del ERP si el tenant no ha pagado.
-  - Portal para que el restaurante administre sus tarjetas y facturas.
+- **Estado:** ✅ 100% Completado y Verificado.
+- **Objetivo:** Generar ingresos recurrentes mediante monetización SaaS automatizada.
+- **Implementación:** Integración completa de Stripe SDK (`stripe` v22), migraciones PostgreSQL en Supabase y UI en Next.js.
+- **Características Implementadas:**
+  - **Base de Datos Multi-Tenant:** Columnas añadidas a `public.negocios` (`stripe_customer_id`, `stripe_subscription_id`, `subscription_status`, `subscription_plan`, `current_period_end`).
+  - **Planes de Suscripción:** Plan Pro Mensual (₡19,900) y Plan Pro Anual (₡199,000 con 2 meses gratis y 17% de ahorro) configurados en `src/lib/stripe.ts`.
+  - **Stripe Checkout API (`/api/stripe/checkout`):** Generación de sesiones de pago con asociación automática al tenant autenticado (`negocio_id`).
+  - **Stripe Customer Portal API (`/api/stripe/portal`):** Auto-servicio para que el dueño actualice tarjetas, cancele o descargue facturas tributarias.
+  - **Webhook Server-Side (`/api/stripe/webhook`):** Procesamiento de eventos `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded` e `invoice.payment_failed`.
+  - **Portal de Facturación UI (`src/components/BillingManager.tsx`):** Integrado tanto en el Portal Central del Dueño (`/owner`) como en Configuración (`/configuracion`).
+  - **Subscription Guard / Paywall (`src/components/SubscriptionGuardModal.tsx`):** Bloqueo reactivo y automático del ERP si la suscripción está vencida o impaga, eximiendo accesos de login y portal del dueño.
+  - **Suite de Pruebas Unitarias:** 8 pruebas automatizadas en `__tests__/stripeBilling.test.ts` (95/95 pruebas del sistema pasando).
 
 ## 6. Sistema de Novedades y Soporte Directo 📢
 - **Objetivo:** Mantener a los clientes informados de las mejoras y darles un canal directo para quejarse (o agradecer).
@@ -63,15 +74,14 @@ Este documento detalla las próximas grandes mejoras (Features) a implementar en
   - Centro interactivo de historial de versiones en `ReleaseNotes.tsx` y archivo formal `CHANGELOG.md`.
 
 ## 10. Aislamiento Estricto de Módulos por Rol y Portal Maestro del Dueño (Superadmin) 🔐👑
+- **Estado:** ✅ 100% Completado con Middleware Server-Side (`src/middleware.ts`).
 - **Objetivo:** Garantizar que los empleados solo tengan acceso a su estación de trabajo correspondiente (Zero Trust operativo) y crear un acceso independiente y exclusivo para el dueño del sistema.
-- **Problema Actual:** Actualmente la barra de navegación superior (`ClientHeader.tsx`) muestra enlaces a todas las secciones (Finanzas, Restaurante/Caja, Cocina, Admin, Configuración) a cualquier usuario autenticado. Un cajero puede hacer clic en "Cocina", "Admin" o ver las finanzas del negocio.
 - **Implementación y Arquitectura:**
-  1. **Aislamiento de Interfaces (Estaciones de Trabajo Autónomas):**
-     - **Módulo Cajero / POS (`/restaurante`):** Vista limpia y focalizada. No tiene acceso ni navegación hacia Cocina KDS, ni Inventario/Recetas, ni Finanzas/Admin. Si intenta navegar por URL a `/admin` o `/cocina`, el sistema lo rebota con un mensaje de permisos insuficientes o solicita PIN de supervisor.
-     - **Módulo Cocina KDS (`/cocina`):** Pantalla completa tipo kiosco táctil para cocineros/preparadores. Sin enlaces al POS, sin acceso a cobros ni a reportes financieros.
-  2. **Portal Maestro / Link Exclusivo para el Dueño del Sistema (Owner/Superadmin):**
-     - **Acceso Exclusivo:** Un panel o ruta dedicada (ej. `/master` o `/owner`) protegida por credencial o rol de superadministrador/dueño.
-     - **Capacidades del Dueño:**
-       - Visión global de todos los módulos: Finanzas completas, Configuración global de suscripciones, Inventario, Recetas, Auditoría de empleados.
-       - Control de accesos y asignación de permisos por PIN/usuario para cada estación (Cajeros, Cocineros, Administradores locales).
-       - Ocultamiento de la barra global en terminales de cajero y cocina para evitar fugas y distracciones.
+  1. **Aislamiento Server-Side & Client-Side:**
+     - **Middleware en Servidor (`src/middleware.ts`):** Protección perimetral de rutas `/owner` y `/configuracion` interceptando cookies de Supabase (`sb-*-auth-token`) antes de tocar cualquier renderizado en Next.js.
+     - **Módulo Cajero / POS (`/restaurante`):** Modo terminal sin enlaces externos en cabecera. Si intenta navegar por URL a `/admin` o `/cocina`, el guard de rol lo bloquea y redirige a su estación.
+     - **Módulo Cocina KDS (`/cocina`):** Pantalla completa tipo kiosco táctil para cocineros/preparadores sin acceso a cobros ni a reportes financieros.
+  2. **Portal Maestro Exclusivo para el Dueño del Sistema (`/owner`):**
+     - Protegido por rol `owner` en Supabase Auth + PIN maestro de doble factor (`DEFAULT_MASTER_PIN`).
+     - Visión global de todos los módulos: Finanzas completas, Inventario, Recetas, Control de empleados con revelado seguro de PINs.
+     - Ocultamiento de la barra global en terminales de cajero y cocina para evitar fugas y distracciones.

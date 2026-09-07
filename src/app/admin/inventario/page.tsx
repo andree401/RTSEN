@@ -1,18 +1,216 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
 
-type InventarioItem = {
+export type InventarioItem = {
   id: string;
   nombre: string;
   cantidad: number;
   unidad_medida: string;
 };
 
-const COMMON_UNITS = ['kg', 'g', 'l', 'ml', 'pz', 'unidad', 'oz'];
+// Conversión canónica entre unidades de medida compatibles (masa y volumen)
+export const UNIT_CANONICAL: Record<string, { base: string; factor: number }> = {
+  // Masa (base: g)
+  'kg': { base: 'g', factor: 1000 },
+  'kilo': { base: 'g', factor: 1000 },
+  'kilos': { base: 'g', factor: 1000 },
+  'kilogramo': { base: 'g', factor: 1000 },
+  'kilogramos': { base: 'g', factor: 1000 },
+  'g': { base: 'g', factor: 1 },
+  'gr': { base: 'g', factor: 1 },
+  'gramo': { base: 'g', factor: 1 },
+  'gramos': { base: 'g', factor: 1 },
+  'mg': { base: 'g', factor: 0.001 },
+  'oz': { base: 'g', factor: 28.3495 },
+  'lb': { base: 'g', factor: 453.592 },
+  'libra': { base: 'g', factor: 453.592 },
+  'libras': { base: 'g', factor: 453.592 },
+
+  // Volumen (base: ml)
+  'l': { base: 'ml', factor: 1000 },
+  'lt': { base: 'ml', factor: 1000 },
+  'lts': { base: 'ml', factor: 1000 },
+  'litro': { base: 'ml', factor: 1000 },
+  'litros': { base: 'ml', factor: 1000 },
+  'ml': { base: 'ml', factor: 1 },
+  'mililitro': { base: 'ml', factor: 1 },
+  'mililitros': { base: 'ml', factor: 1 },
+  'cc': { base: 'ml', factor: 1 },
+  'fl oz': { base: 'ml', factor: 29.5735 },
+
+  // Conteo / Unidades discretas (base: pz)
+  'pz': { base: 'pz', factor: 1 },
+  'pza': { base: 'pz', factor: 1 },
+  'pzas': { base: 'pz', factor: 1 },
+  'pieza': { base: 'pz', factor: 1 },
+  'piezas': { base: 'pz', factor: 1 },
+  'unidad': { base: 'pz', factor: 1 },
+  'unidades': { base: 'pz', factor: 1 },
+  'ud': { base: 'pz', factor: 1 },
+  'uds': { base: 'pz', factor: 1 },
+};
+
+export const COMMON_UNITS = ['kg', 'g', 'l', 'ml', 'pz', 'unidad', 'oz'];
+
+export function tryConvertUnits(qty: number, fromUnit: string, toUnit: string): number | null {
+  const f = fromUnit.trim().toLowerCase();
+  const t = toUnit.trim().toLowerCase();
+  if (f === t) return qty;
+  const cFrom = UNIT_CANONICAL[f];
+  const cTo = UNIT_CANONICAL[t];
+  if (!cFrom || !cTo || cFrom.base !== cTo.base) return null;
+  // Convertir primero a base, luego a destino
+  const inBase = qty * cFrom.factor;
+  const inDest = inBase / cTo.factor;
+  return Math.round(inDest * 10000) / 10000;
+}
+
+// Estimaciones culinarias estándar de peso por pieza (en gramos) para insumos comunes
+export const PIECE_WEIGHT_ESTIMATES: Record<string, number> = {
+  'tomate': 120,
+  'tomates': 120,
+  'jitomate': 120,
+  'jitomates': 120,
+  'cebolla': 150,
+  'cebollas': 150,
+  'papa': 180,
+  'papas': 180,
+  'limon': 60,
+  'limones': 60,
+  'aguacate': 180,
+  'aguacates': 180,
+  'huevo': 55,
+  'huevos': 55,
+  'zanahoria': 100,
+  'zanahorias': 100,
+  'manzana': 150,
+  'manzanas': 150,
+  'naranja': 180,
+  'naranjas': 180,
+  'platano': 150,
+  'platanos': 150,
+  'pepino': 250,
+  'pepinos': 250,
+  'chile': 30,
+  'chiles': 30,
+  'pimiento': 150,
+  'pimientos': 150,
+  'diente de ajo': 5,
+  'ajo': 50,
+};
+
+// Obtiene el peso estimado por pieza (en gramos) para un insumo (default: 100g)
+export function getEstimatedGramsPerPiece(ingredientName: string): number {
+  const norm = ingredientName.trim().toLowerCase();
+  for (const [key, grams] of Object.entries(PIECE_WEIGHT_ESTIMATES)) {
+    if (norm.includes(key)) {
+      return grams;
+    }
+  }
+  return 100; // 100g estándar por pieza si no está en la tabla
+}
+
+// Convierte entre unidades discretas (pz/unidad) y masa (kg/g) basándose en peso por pieza
+export function convertPieceAndMass(
+  qty: number,
+  fromUnit: string,
+  toUnit: string,
+  ingredientName: string
+): number | null {
+  const f = fromUnit.trim().toLowerCase();
+  const t = toUnit.trim().toLowerCase();
+  const cFrom = UNIT_CANONICAL[f];
+  const cTo = UNIT_CANONICAL[t];
+  if (!cFrom || !cTo) return null;
+
+  const gramsPerPiece = getEstimatedGramsPerPiece(ingredientName);
+
+  // De pieza a masa (ej. 5 pz -> kg)
+  if (cFrom.base === 'pz' && cTo.base === 'g') {
+    const totalGrams = qty * gramsPerPiece;
+    const inDest = totalGrams / cTo.factor;
+    return Math.round(inDest * 10000) / 10000;
+  }
+
+  // De masa a pieza (ej. 3 kg -> pz)
+  if (cFrom.base === 'g' && cTo.base === 'pz') {
+    const totalGrams = qty * cFrom.factor;
+    const pieces = totalGrams / gramsPerPiece;
+    return Math.round(pieces * 10) / 10;
+  }
+
+  return null;
+}
+
+export type HandleItemMatchResult = 
+  | { type: 'exact'; existingItem: InventarioItem; nuevaCantidadTotal: number }
+  | { type: 'convertible'; existingItem: InventarioItem; convertedQty: number; nuevaCantidadTotal: number; note?: string }
+  | { type: 'brand_new' };
+
+export function resolveInventoryAddition(
+  items: InventarioItem[],
+  trimmedName: string,
+  trimmedUnidad: string,
+  cantidad: number
+): HandleItemMatchResult {
+  const sameNameItems = items.filter(
+    i => i.nombre.trim().toLowerCase() === trimmedName.toLowerCase()
+  );
+
+  if (sameNameItems.length === 0) {
+    return { type: 'brand_new' };
+  }
+
+  // 1. Caso: Coincidencia EXACTA de unidad
+  const exactMatch = sameNameItems.find(
+    i => i.unidad_medida.trim().toLowerCase() === trimmedUnidad.toLowerCase()
+  );
+
+  if (exactMatch) {
+    const nuevaCantidadTotal = Math.round((exactMatch.cantidad + cantidad) * 10000) / 10000;
+    return { type: 'exact', existingItem: exactMatch, nuevaCantidadTotal };
+  }
+
+  // 2. Caso: Unidades canónicas compatibles (ej. kg <-> g, l <-> ml)
+  for (const item of sameNameItems) {
+    const converted = tryConvertUnits(cantidad, trimmedUnidad, item.unidad_medida);
+    if (converted !== null) {
+      const nuevaCantidadTotal = Math.round((item.cantidad + converted) * 10000) / 10000;
+      return { type: 'convertible', existingItem: item, convertedQty: converted, nuevaCantidadTotal };
+    }
+  }
+
+  // 3. Caso Opción 1: Conversión masa <-> piezas mediante peso por pieza (ej. 3 kg existentes y agregan 5 pz)
+  for (const item of sameNameItems) {
+    const pieceConverted = convertPieceAndMass(cantidad, trimmedUnidad, item.unidad_medida, trimmedName);
+    if (pieceConverted !== null) {
+      const nuevaCantidadTotal = Math.round((item.cantidad + pieceConverted) * 10000) / 10000;
+      const gPerPiece = getEstimatedGramsPerPiece(trimmedName);
+      return { 
+        type: 'convertible', 
+        existingItem: item, 
+        convertedQty: pieceConverted, 
+        nuevaCantidadTotal,
+        note: `(Equivalencia estimada: 1 pz ≈ ${gPerPiece}g)`
+      };
+    }
+  }
+
+  // 4. Si la unidad es completamente ajena (ej. litros a kilos sin densidad), acumular en el primer registro
+  const targetItem = sameNameItems[0];
+  const nuevaCantidadTotal = Math.round((targetItem.cantidad + cantidad) * 10000) / 10000;
+  return { 
+    type: 'convertible', 
+    existingItem: targetItem, 
+    convertedQty: cantidad, 
+    nuevaCantidadTotal,
+    note: `(Se unificó en ${targetItem.unidad_medida})`
+  };
+}
 
 export default function InventarioPanel() {
   const { ownerId, activeRole } = useAppContext();
@@ -50,6 +248,7 @@ export default function InventarioPanel() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCantidad, setEditCantidad] = useState('');
+  const [editUnidad, setEditUnidad] = useState('');
 
   const fetchInventario = useCallback(async () => {
     if (!ownerId) return;
@@ -62,7 +261,11 @@ export default function InventarioPanel() {
         .order('nombre_ingrediente');
 
       if (error) throw error;
-      setItems((data as InventarioItem[]) || []);
+      const sorted = ((data as InventarioItem[]) || []).sort((a, b) => {
+        const comp = a.nombre.trim().localeCompare(b.nombre.trim(), undefined, { sensitivity: 'base' });
+        return comp !== 0 ? comp : a.unidad_medida.trim().localeCompare(b.unidad_medida.trim(), undefined, { sensitivity: 'base' });
+      });
+      setItems(sorted);
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Error fetching inventario:', error);
@@ -125,15 +328,61 @@ export default function InventarioPanel() {
       return;
     }
 
-    // Prevención de duplicados por nombre en el mismo negocio
-    const duplicate = items.some(
-      i => i.nombre.trim().toLowerCase() === trimmedName.toLowerCase()
-    );
-    if (duplicate) {
-      alert(`⚠️ El ingrediente "${trimmedName}" ya existe en el inventario. Puedes ajustar su cantidad en la tabla.`);
-      return;
+    // Opción 2: Gestión de presentaciones múltiples y unidades compatibles
+    const matchResult = resolveInventoryAddition(items, trimmedName, trimmedUnidad, cantidad);
+
+    // 1. Caso: Misma unidad exacta -> acumular directo
+    if (matchResult.type === 'exact') {
+      const { existingItem, nuevaCantidadTotal } = matchResult;
+      try {
+        const { error } = await supabase
+          .from('inventario_items')
+          .update({ cantidad_disponible: nuevaCantidadTotal })
+          .eq('id', existingItem.id)
+          .eq('negocio_id', ownerId);
+
+        if (error) throw error;
+
+        setItems(prev => prev.map(item => item.id === existingItem.id ? { ...item, cantidad: nuevaCantidadTotal } : item));
+        setNewName('');
+        setNewCantidad('');
+        setNewUnidad('');
+        alert(`✅ ¡Stock acumulado con éxito! Se sumaron ${cantidad} ${trimmedUnidad} a "${existingItem.nombre}". Total ahora: ${nuevaCantidadTotal} ${existingItem.unidad_medida}.`);
+        return;
+      } catch (err: unknown) {
+        const error = err as Error;
+        alert('Error al acumular stock: ' + error.message);
+        return;
+      }
     }
 
+    // 2. Caso: Unidades compatibles convertibles (ej. kg <-> g, l <-> ml) -> convertir y acumular
+    if (matchResult.type === 'convertible') {
+      const { existingItem, convertedQty, nuevaCantidadTotal } = matchResult;
+      try {
+        const { error } = await supabase
+          .from('inventario_items')
+          .update({ cantidad_disponible: nuevaCantidadTotal })
+          .eq('id', existingItem.id)
+          .eq('negocio_id', ownerId);
+
+        if (error) throw error;
+
+        setItems(prev => prev.map(item => item.id === existingItem.id ? { ...item, cantidad: nuevaCantidadTotal } : item));
+        setNewName('');
+        setNewCantidad('');
+        setNewUnidad('');
+        const noteText = matchResult.note ? ` ${matchResult.note}` : '';
+        alert(`✅ ¡Conversión y suma automática! Se convirtieron ${cantidad} ${trimmedUnidad} a ${convertedQty} ${existingItem.unidad_medida}${noteText} y se sumaron a "${existingItem.nombre}". Total ahora: ${nuevaCantidadTotal} ${existingItem.unidad_medida}.`);
+        return;
+      } catch (err: unknown) {
+        const error = err as Error;
+        alert('Error al acumular stock convertido: ' + error.message);
+        return;
+      }
+    }
+
+    // 3. Caso: Unidades distintas e incompatibles ('new_presentation') o ingrediente nuevo ('brand_new')
     try {
       const { data, error } = await supabase
         .from('inventario_items')
@@ -149,7 +398,11 @@ export default function InventarioPanel() {
       if (error) throw error;
       
       if (data) {
-        setItems(prev => [...prev, data as InventarioItem].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+        const newItem = data as InventarioItem;
+        setItems(prev => [...prev, newItem].sort((a, b) => {
+          const comp = a.nombre.trim().localeCompare(b.nombre.trim(), undefined, { sensitivity: 'base' });
+          return comp !== 0 ? comp : a.unidad_medida.trim().localeCompare(b.unidad_medida.trim(), undefined, { sensitivity: 'base' });
+        }));
         setNewName('');
         setNewCantidad('');
         setNewUnidad('');
@@ -163,6 +416,7 @@ export default function InventarioPanel() {
   const startEdit = (item: InventarioItem) => {
     setEditingId(item.id);
     setEditCantidad(item.cantidad.toString());
+    setEditUnidad(item.unidad_medida);
   };
 
   const saveEdit = async () => {
@@ -172,27 +426,35 @@ export default function InventarioPanel() {
       alert('⚠️ Por favor ingresa un número de existencias (puede ser 0).');
       return;
     }
+    if (editUnidad.trim() === '') {
+      alert('⚠️ Por favor ingresa la unidad de medida.');
+      return;
+    }
 
     const cantidad = Number(editCantidad);
     if (isNaN(cantidad) || cantidad < 0) {
       alert('⚠️ La cantidad debe ser un número mayor o igual a 0.');
       return;
     }
+    const cleanUnidad = editUnidad.trim();
 
     try {
       const { error } = await supabase
         .from('inventario_items')
-        .update({ cantidad_disponible: cantidad })
+        .update({ 
+          cantidad_disponible: cantidad,
+          unidad_medida: cleanUnidad
+        })
         .eq('id', editingId)
         .eq('negocio_id', ownerId);
 
       if (error) throw error;
       
-      setItems(prev => prev.map(item => item.id === editingId ? { ...item, cantidad } : item));
+      setItems(prev => prev.map(item => item.id === editingId ? { ...item, cantidad, unidad_medida: cleanUnidad } : item));
       setEditingId(null);
     } catch (err: unknown) {
       const error = err as Error;
-      alert('Error al actualizar cantidad: ' + error.message);
+      alert('Error al actualizar inventario: ' + error.message);
     }
   };
 
@@ -415,6 +677,11 @@ export default function InventarioPanel() {
                       <td className="py-4 px-6 font-medium text-gray-200">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-white">{item.nombre}</span>
+                          {items.filter(i => i.nombre.trim().toLowerCase() === item.nombre.trim().toLowerCase()).length > 1 && (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-violet-950/80 text-violet-300 border border-violet-700/60 shadow-sm" title="Ingrediente con múltiples unidades/presentaciones registradas">
+                              Pres: {item.unidad_medida}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-4 px-6 text-center">
@@ -439,6 +706,17 @@ export default function InventarioPanel() {
                             <span className="font-bold text-base text-white">
                               {item.cantidad}
                             </span>
+                            {/* Visualización de Doble Medida (Opción 1) */}
+                            {UNIT_CANONICAL[item.unidad_medida.trim().toLowerCase()]?.base === 'g' && item.cantidad > 0 && (
+                              <span className="text-[11px] font-mono text-violet-400 font-semibold" title="Equivalencia estimada por peso promedio">
+                                ≈ {Math.round((item.cantidad * (UNIT_CANONICAL[item.unidad_medida.trim().toLowerCase()]?.factor || 1)) / getEstimatedGramsPerPiece(item.nombre) * 10) / 10} pz
+                              </span>
+                            )}
+                            {UNIT_CANONICAL[item.unidad_medida.trim().toLowerCase()]?.base === 'pz' && item.cantidad > 0 && (
+                              <span className="text-[11px] font-mono text-violet-400 font-semibold" title="Peso estimado según promedio por pieza">
+                                ≈ {Math.round(((item.cantidad * getEstimatedGramsPerPiece(item.nombre)) / 1000) * 100) / 100} kg
+                              </span>
+                            )}
                             {isOutOfStock ? (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
                                 🔴 Agotado
@@ -456,7 +734,22 @@ export default function InventarioPanel() {
                         )}
                       </td>
                       <td className="py-4 px-6 text-center text-gray-300 text-sm font-mono">
-                        {item.unidad_medida}
+                        {editingId === item.id ? (
+                          <input 
+                            type="text" 
+                            list="unidades-list"
+                            value={editUnidad}
+                            onChange={e => setEditUnidad(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') saveEdit();
+                              if (e.key === 'Escape') setEditingId(null);
+                            }}
+                            className="bg-[#0d0d0d] border border-violet-500 rounded-lg p-1.5 w-20 text-center text-white focus:outline-none focus:ring-1 focus:ring-violet-400 font-bold text-xs"
+                            placeholder="kg, g, pz"
+                          />
+                        ) : (
+                          item.unidad_medida
+                        )}
                       </td>
                       <td className="py-4 px-6 text-right">
                         {editingId === item.id ? (

@@ -241,6 +241,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Actualización Optimista (§2 FASE 5.0): reflejar en UI inmediatamente
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const optimisticDish: Dish = { id: tempId, name: cleanName, price: cleanPrice };
+    setMenu(prev => [...prev, optimisticDish].sort((a, b) => a.name.localeCompare(b.name)));
+
     const { data, error } = await supabase
       .from('menu_items')
       .insert({ nombre: cleanName, precio: cleanPrice, negocio_id: ownerId })
@@ -249,9 +254,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (error) {
       console.error('Error adding dish:', error);
+      // Rollback optimista: remover el elemento temporal que falló
+      setMenu(prev => prev.filter(d => d.id !== tempId));
       alert('Error guardando platillo en BD: ' + error.message);
     } else if (data) {
-      setMenu(prev => [...prev, { id: data.id, name: data.nombre, price: data.precio }].sort((a, b) => a.name.localeCompare(b.name)));
+      // Reemplazar el ID temporal por el ID persistido en BD
+      setMenu(prev => prev.map(d => (d.id === tempId ? { id: data.id, name: data.nombre, price: data.precio } : d)).sort((a, b) => a.name.localeCompare(b.name)));
     }
   };
 
@@ -268,6 +276,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Actualización Optimista (§2 FASE 5.0): guardar snapshot para rollback y actualizar UI
+    const previousMenu = [...menu];
+    setMenu(prev => prev.map((d) => (d.id === id ? { ...d, name: cleanName, price: cleanPrice } : d)).sort((a, b) => a.name.localeCompare(b.name)));
+
     const { error } = await supabase
       .from('menu_items')
       .update({ nombre: cleanName, precio: cleanPrice })
@@ -276,14 +288,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error('Error updating dish:', error);
+      // Rollback optimista en caso de error
+      setMenu(previousMenu);
       alert('Error actualizando platillo: ' + error.message);
-    } else {
-      setMenu(prev => prev.map((d) => (d.id === id ? { ...d, name: cleanName, price: cleanPrice } : d)).sort((a, b) => a.name.localeCompare(b.name)));
     }
   };
 
   const deleteDish = async (id: string) => {
     if (!ownerId) return;
+    // Actualización Optimista (§2 FASE 5.0): remover inmediatamente de UI con snapshot previo
+    const previousMenu = [...menu];
+    setMenu(prev => prev.filter((d) => d.id !== id));
+
     // Eliminación segura: eliminar recetas asociadas primero para no romper restricciones de llave foránea
     try {
       await supabase.from('recetas').delete().eq('menu_item_id', id);
@@ -299,9 +315,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error('Error deleting dish:', error);
+      // Rollback optimista: restaurar el platillo en la lista
+      setMenu(previousMenu);
       alert('Error eliminando platillo: ' + error.message);
-    } else {
-      setMenu(prev => prev.filter((d) => d.id !== id));
     }
   };
 

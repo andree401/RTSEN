@@ -4,6 +4,24 @@ Registro cronológico estricto y forense basado en los commits, tags y despliegu
 
 ---
 
+## [5.0.0] - 2026-09-07
+### 🚀 Hito Enterprise: PWA, Multi-Tenant RLS & Facturación Stripe
+- **Módulo de Facturación Stripe Billing**:
+  - Integración de Stripe SDK v22 (`@stripe`) en entorno Next.js 16 con arquitectura desacoplada de planes mensual y anual.
+  - Endpoints de servidor (`/api/stripe/checkout`, `/api/stripe/portal`, `/api/stripe/status`, `/api/stripe/webhook`).
+  - Interfaz de autoservicio de facturación [`BillingManager.tsx`](file:///C:/Users/ownne/source/repos/finanzas-web-pro/src/components/BillingManager.tsx) en el Portal del Dueño y Configuración.
+  - Guard perimetral de suscripción ([`SubscriptionGuardModal.tsx`](file:///C:/Users/ownne/source/repos/finanzas-web-pro/src/components/SubscriptionGuardModal.tsx)) con botón de renovación de prueba gratuita de 30 días para continuar refinando el sistema sin cobros forzados.
+- **Progressive Web App (PWA)**:
+  - Soporte para instalación como app de escritorio y móvil (`standalone`).
+  - Service Worker con estrategia de caché Network-First y fallback offline.
+  - Banner inteligente no intrusivo (`PwaRegister.tsx`) y manifiesto web oficial (`manifest.json`).
+- **Seguridad Multi-Tenant Criptográfica (Supabase RLS)**:
+  - Políticas de Row Level Security ejecutadas en PostgreSQL aislando datos por `auth.uid()` en todas las tablas sensibles del ERP.
+- **Inventario Culinario Bidireccional**:
+  - Conversión dual dinámica Masa (kg) ↔ Unidades (piezas) con equivalencias culinarias en tiempo real y almacenamiento unificado.
+
+---
+
 ## [4.8.0] - 2026-09-06
 ### ⚡ Hito de Identidad Visual & Experiencia Sensorial
 - **Identidad Oficial RTSEN**: Adopción de la marca formal **RTSEN** en cabecera, metadatos (`layout.tsx`), documentación y notas de versión.

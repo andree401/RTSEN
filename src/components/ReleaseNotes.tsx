@@ -16,11 +16,26 @@ type VersionRecord = {
 
 const VERSION_HISTORY: VersionRecord[] = [
   {
-    version: 'v4.8.0',
+    version: 'v5.0.0',
     tag: 'Actual',
+    title: 'Enterprise: PWA, Multi-Tenant RLS & Facturación Stripe',
+    date: '07 Sep 2026',
+    badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+    highlights: [
+      '💳 Módulo de Facturación y Suscripciones con Stripe SDK: Planes Pro Mensual y Anual con gestión en autoservicio.',
+      '🎁 Renovación de Prueba Gratuita con 1 clic para seguir puliendo el sistema sin cobros forzados.',
+      '📱 Progressive Web App (PWA) instalable en Android, iOS y Desktop con soporte offline y Service Worker.',
+      '🔒 Aislamiento criptográfico estricto Multi-Tenant (PostgreSQL RLS) a nivel de base de datos en Supabase.',
+      '🍅 Conversión culinaria dual de unidades en inventario (Kilos ↔ Piezas unificadas en tiempo real).',
+      '👑 Portal Maestro del Dueño con Zero-Trust y PIN maestro de supervisión central.',
+    ],
+  },
+  {
+    version: 'v4.8.0',
+    tag: 'Estable',
     title: 'Identidad RTSEN, UI Luminosa & Audio Sensorial',
     date: '06 Sep 2026',
-    badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+    badgeColor: 'bg-slate-100 text-slate-700 border-slate-300',
     highlights: [
       '⚡ Adopción de la marca oficial RTSEN en toda la plataforma, barra de navegación y metadatos.',
       '🎨 Rediseño visual luminoso: Despedida al tema oscuro cavernoso; fondos frescos, gradientes vivos y tarjetas métricas de alta gama.',

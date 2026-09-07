@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
+import BillingManager from '@/components/BillingManager';
 
 const DEFAULT_MASTER_PIN = '0000';
 
@@ -445,6 +446,9 @@ export default function OwnerMasterPortal() {
             </div>
           </div>
         </section>
+
+        {/* Módulo de Suscripción y Facturación Stripe */}
+        <BillingManager />
 
         {/* Control de Credenciales de Personal con Enmascaramiento de Seguridad */}
         <section className="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-6">

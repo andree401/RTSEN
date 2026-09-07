@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST as pinLoginHandler } from '../src/app/api/auth/pin-login/route';
 import { POST as superAdminHandler } from '../src/app/api/sys-ops/metrics/route';
 
+// Asegurar variables de entorno requeridas por los endpoints (la conexión real es mockeada)
+process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://mock:mock@localhost:5432/mock';
+process.env.SUPERADMIN_SECRET_KEY = process.env.SUPERADMIN_SECRET_KEY || '0002341';
+
 // Mock de pg Client
 const mockQuery = vi.fn();
 const mockConnect = vi.fn().mockResolvedValue(undefined);
@@ -125,7 +129,7 @@ describe('Portal Secreto SuperAdmin: Endpoint /api/sys-ops/metrics', () => {
         ],
       }); // topNegocios
 
-    const validKey = process.env.SUPERADMIN_SECRET_KEY || 'rtsen-master-saas-super-secret-2026!';
+    const validKey = process.env.SUPERADMIN_SECRET_KEY || '0002341';
 
     const req = new Request('http://localhost:3000/api/sys-ops/metrics', {
       method: 'POST',

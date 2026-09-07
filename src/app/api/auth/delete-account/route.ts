@@ -34,8 +34,11 @@ export async function POST(req: Request) {
     const userId = user.id;
 
     // Conexión a la base de datos para ejecutar el borrado irreversible
-    const connectionString = process.env.DATABASE_URL ||
-      'postgresql://postgres:Hocxoq-7gunji-moxgop@db.bbjjmcuiwlebqljmwbms.supabase.co:5432/postgres';
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      console.error('DATABASE_URL no configurada');
+      return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
+    }
 
     client = new Client({ connectionString });
     await client.connect();
@@ -94,8 +97,7 @@ export async function POST(req: Request) {
       await client.query('ROLLBACK').catch(() => {});
     }
     console.error('Error al borrar usuario y datos en cascada:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido al eliminar la cuenta';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Error interno al eliminar la cuenta. Contacte soporte.' }, { status: 500 });
   } finally {
     if (client) {
       await client.end().catch(() => {});

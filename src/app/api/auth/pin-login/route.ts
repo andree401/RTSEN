@@ -18,8 +18,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const connectionString = process.env.DATABASE_URL ||
-      'postgresql://postgres:Hocxoq-7gunji-moxgop@db.bbjjmcuiwlebqljmwbms.supabase.co:5432/postgres';
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      console.error('DATABASE_URL no configurada');
+      return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
+    }
 
     client = new Client({ connectionString });
     await client.connect();
@@ -50,7 +53,7 @@ export async function POST(req: Request) {
       employee: {
         id: emp.id,
         nombre: emp.nombre,
-        pin: emp.pin,
+        pin: cleanPin,
         negocio_id: emp.negocio_id,
         rol: emp.rol || 'cajero',
         restaurante: emp.restaurante
@@ -60,7 +63,7 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     const err = error as Error;
     console.error('Error en /api/auth/pin-login:', err);
-    return NextResponse.json({ error: err.message || 'Error al validar PIN' }, { status: 500 });
+    return NextResponse.json({ error: 'Error interno al validar PIN' }, { status: 500 });
   } finally {
     if (client) {
       try {

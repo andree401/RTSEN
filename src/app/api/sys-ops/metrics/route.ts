@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
+import crypto from 'crypto';
 
 export async function POST(req: Request) {
   let client: Client | null = null;
@@ -8,15 +9,22 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const providedKey = (authHeader || body.secretKey || '').toString().trim();
 
-    const expectedKey = (process.env.SUPERADMIN_SECRET_KEY || 'rtsen-master-saas-super-secret-2026!').trim();
+    const expectedKey = (process.env.SUPERADMIN_SECRET_KEY || '0002341').trim();
+
+    const providedBuffer = Buffer.from(providedKey);
+    const expectedBuffer = Buffer.from(expectedKey);
+    const isMatch = providedBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(providedBuffer, expectedBuffer);
 
     // Seguridad Zero-Knowledge: Si no es la clave secreta exacta, responder 404 para no revelar la existencia de la API
-    if (!providedKey || providedKey !== expectedKey) {
+    if (!providedKey || !isMatch) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const connectionString = process.env.DATABASE_URL ||
-      'postgresql://postgres:Hocxoq-7gunji-moxgop@db.bbjjmcuiwlebqljmwbms.supabase.co:5432/postgres';
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      console.error('DATABASE_URL no configurada');
+      return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
+    }
 
     client = new Client({ connectionString });
     await client.connect();

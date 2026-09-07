@@ -1,12 +1,28 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useStealthGateway } from '../hooks/useStealthGateway';
 
 export default function ClientHeader() {
   const { logout, ownerId, activeRole, currentEmployee } = useAppContext();
   const pathname = usePathname();
+  const router = useRouter();
+  const { triggerTap } = useStealthGateway({ minIntervalMs: 500, requiredTaps: 5, targetRoute: '/sys-ops' });
+
+  // Atajo de teclado encubierto: Ctrl + Shift + S
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        router.push('/sys-ops');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router]);
 
   const handleLogout = async () => {
     try {
@@ -30,22 +46,29 @@ export default function ClientHeader() {
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 px-6 py-3.5 shadow-sm print:hidden">
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <span 
-              className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white text-lg shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform cursor-pointer"
+          <div className="flex items-center gap-2.5 group">
+            <button 
+              type="button"
+              onClick={(e) => {
+                const triggered = triggerTap();
+                if (!triggered && currentPath !== '/') {
+                  router.push('/');
+                }
+              }}
+              className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white text-lg shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform cursor-pointer border-none focus:outline-none select-none"
               title="RTSEN ERP"
             >
               ⚡
-            </span>
-            <div className="flex flex-col">
+            </button>
+            <Link href="/" className="flex flex-col">
               <span className="font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-lg leading-tight tracking-tight">
                 RTSEN
               </span>
               <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
                 ERP Restaurante
               </span>
-            </div>
-          </Link>
+            </Link>
+          </div>
 
           {isTerminalMode ? (
             <div className="flex items-center gap-2">

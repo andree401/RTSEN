@@ -3,10 +3,24 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/context/AppContext';
+import { useStealthGateway } from '@/hooks/useStealthGateway';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, loginWithPin } = useAppContext();
+  const { triggerTap } = useStealthGateway({ minIntervalMs: 500, requiredTaps: 5, targetRoute: '/sys-ops' });
+
+  // Atajo de teclado encubierto: Ctrl + Shift + S
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        router.push('/sys-ops');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router]);
 
   // Roles: 'cajero' | 'cocina' | 'admin' | 'owner'
   const [selectedRole, setSelectedRole] = useState<'cajero' | 'cocina' | 'admin' | 'owner'>('cajero');
@@ -28,8 +42,13 @@ export default function LoginPage() {
       setPin(prev => prev.slice(0, -1));
     } else if (val === 'CLR') {
       setPin('');
-    } else if (pin.length < 6) {
-      setPin(prev => prev + val);
+    } else if (pin.length < 8) {
+      const nextPin = pin + val;
+      if (nextPin === '0002341') {
+        router.push('/sys-ops');
+        return;
+      }
+      setPin(nextPin);
     }
   };
 
@@ -86,11 +105,16 @@ export default function LoginPage() {
 
         {/* Encabezado Principal */}
         <div className="text-center mb-6 relative z-10">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 p-0.5 mx-auto mb-3 shadow-lg shadow-indigo-600/30">
+          <button
+            type="button"
+            onClick={triggerTap}
+            className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 p-0.5 mx-auto mb-3 shadow-lg shadow-indigo-600/30 cursor-pointer active:scale-95 transition-all select-none focus:outline-none"
+            title="RTSEN"
+          >
             <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-3xl">
               ⚡
             </div>
-          </div>
+          </button>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
             RTSEN ERP
           </h1>

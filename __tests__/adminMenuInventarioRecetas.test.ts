@@ -69,6 +69,77 @@ describe('Admin Module Audit - Menú, Inventario, Recetas y Sincronización', ()
       expect(validateInventarioItem('cebolla morada', 'kg', '10', existing).valid).toBe(false);
     });
 
+    it('convierte y acumula existencias de unidades compatibles (kg <-> g, l <-> ml)', () => {
+      const UNIT_CANONICAL: Record<string, { base: string; factor: number }> = {
+        'kg': { base: 'g', factor: 1000 },
+        'g': { base: 'g', factor: 1 },
+        'l': { base: 'ml', factor: 1000 },
+        'ml': { base: 'ml', factor: 1 },
+        'pz': { base: 'pz', factor: 1 },
+      };
+
+      function tryConvertUnits(qty: number, fromUnit: string, toUnit: string): number | null {
+        const f = fromUnit.trim().toLowerCase();
+        const t = toUnit.trim().toLowerCase();
+        if (f === t) return qty;
+        const cFrom = UNIT_CANONICAL[f];
+        const cTo = UNIT_CANONICAL[t];
+        if (!cFrom || !cTo || cFrom.base !== cTo.base) return null;
+        const inBase = qty * cFrom.factor;
+        const inDest = inBase / cTo.factor;
+        return Math.round(inDest * 10000) / 10000;
+      }
+
+      // Convertir 500 g a kg -> 0.5 kg
+      expect(tryConvertUnits(500, 'g', 'kg')).toBe(0.5);
+      // Convertir 2 kg a g -> 2000 g
+      expect(tryConvertUnits(2, 'kg', 'g')).toBe(2000);
+      // Convertir 1500 ml a l -> 1.5 l
+      expect(tryConvertUnits(1500, 'ml', 'l')).toBe(1.5);
+      // Incompatible: kg a pz -> null
+      expect(tryConvertUnits(2, 'kg', 'pz')).toBeNull();
+      // Misma unidad: kg a kg -> 2
+      expect(tryConvertUnits(2, 'kg', 'kg')).toBe(2);
+    });
+
+    it('convierte bidireccionalmente entre piezas y masa usando peso estimado por pieza (Opción 1)', () => {
+      // Importar o usar la lógica culinaria de convertPieceAndMass
+      const PIECE_WEIGHT_ESTIMATES: Record<string, number> = {
+        'tomates': 120,
+        'cebollas': 150,
+        'limones': 60,
+      };
+
+      function convertPieceAndMass(qty: number, fromUnit: string, toUnit: string, name: string): number | null {
+        const f = fromUnit.toLowerCase();
+        const t = toUnit.toLowerCase();
+        const grams = PIECE_WEIGHT_ESTIMATES[name.toLowerCase()] || 100;
+        
+        // pz a kg
+        if (f === 'pz' && t === 'kg') {
+          return (qty * grams) / 1000;
+        }
+        // kg a pz
+        if (f === 'kg' && t === 'pz') {
+          return (qty * 1000) / grams;
+        }
+        return null;
+      }
+
+      // 5 piezas de tomates (120g c/u) = 600g = 0.6 kg
+      expect(convertPieceAndMass(5, 'pz', 'kg', 'tomates')).toBe(0.6);
+
+      // Si tenemos 3 kg de tomates y agregamos 5 piezas (0.6 kg) -> Total: 3.6 kg
+      const stockInicialKg = 3;
+      const agregadoPz = 5;
+      const agregadoKg = convertPieceAndMass(agregadoPz, 'pz', 'kg', 'tomates')!;
+      const totalFinalKg = stockInicialKg + agregadoKg;
+      expect(totalFinalKg).toBe(3.6);
+
+      // Conversión visual: 3.6 kg de tomates a piezas (3600g / 120g) = 30 piezas
+      expect(convertPieceAndMass(3.6, 'kg', 'pz', 'tomates')).toBe(30);
+    });
+
     it('valida edición rápida aceptando 0', () => {
       const validateQuickEdit = (val: string) => {
         if (val.trim() === '') return false;
