@@ -231,52 +231,69 @@ function AuthScreen({ onLogin }: { onLogin: (email: string, pass: string, isSign
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">
-          {isSignUp ? 'Crear Cuenta' : 'SaaS Multi-Tenant'}
-        </h1>
-        <div className="flex flex-col gap-4">
-          <input 
-            type="email" 
-            placeholder="Correo Electrónico" 
-            value={email} 
-            onChange={e => setEmail(e.target.value)} 
-            disabled={isLoading}
-            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
-          />
-          <input 
-            type="password" 
-            placeholder="Contraseña" 
-            value={password} 
-            onChange={e => setPassword(e.target.value)} 
-            disabled={isLoading}
-            className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
-          />
-          {isSignUp && (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/30 to-sky-50/40 p-4">
+      <div className="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl shadow-indigo-500/10 border border-slate-200/80 w-full max-w-sm">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white text-2xl shadow-md shadow-indigo-500/25 mb-3">
+            ⚡
+          </div>
+          <h1 className="text-2xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 tracking-tight">
+            RTSEN ERP
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 font-medium text-center">
+            {isSignUp ? 'Crea la cuenta de tu restaurante' : 'Iniciar Sesión en el Sistema'}
+          </p>
+        </div>
+        <div className="flex flex-col gap-3.5">
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Correo Electrónico</label>
             <input 
-              type="text" 
-              placeholder="Nombre del Restaurante" 
-              value={restaurantName} 
-              onChange={e => setRestaurantName(e.target.value)} 
+              type="email" 
+              placeholder="tu@restaurante.com" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
               disabled={isLoading}
-              className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
+              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all"
             />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Contraseña</label>
+            <input 
+              type="password" 
+              placeholder="••••••••" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              disabled={isLoading}
+              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all"
+            />
+          </div>
+          {isSignUp && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nombre del Restaurante</label>
+              <input 
+                type="text" 
+                placeholder="Ej. Taquería El Sol" 
+                value={restaurantName} 
+                onChange={e => setRestaurantName(e.target.value)} 
+                disabled={isLoading}
+                className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all"
+              />
+            </div>
           )}
           <button 
             onClick={handleSubmit} 
             disabled={isLoading}
-            className="bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
+            className="w-full mt-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:opacity-95 text-white font-bold py-2.5 rounded-xl shadow-md shadow-indigo-600/20 transition-all disabled:opacity-75 disabled:cursor-not-allowed text-sm"
           >
-            {isLoading ? 'Cargando...' : (isSignUp ? 'Registrarse' : 'Ingresar')}
+            {isLoading ? 'Cargando...' : (isSignUp ? 'Crear Restaurante' : 'Ingresar al Sistema')}
           </button>
           
           <button 
             onClick={() => setIsSignUp(!isSignUp)}
             disabled={isLoading}
-            className="text-sm text-blue-600 hover:underline mt-2 disabled:opacity-50"
+            className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline text-center font-medium mt-1 disabled:opacity-50"
           >
-            {isSignUp ? '¿Ya tienes cuenta? Ingresa aquí' : '¿No tienes cuenta? Regístrate'}
+            {isSignUp ? '¿Ya tienes cuenta? Ingresa aquí' : '¿No tienes cuenta? Regístrate gratis'}
           </button>
         </div>
       </div>

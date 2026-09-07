@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "RTSEN - ERP para Restaurantes",
-  description: "Plataforma multi-tenant para restaurantes",
+  description: "Plataforma de gestión financiera y operativa para restaurantes",
 };
 
 export default function RootLayout({
