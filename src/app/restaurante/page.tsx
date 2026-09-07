@@ -26,6 +26,7 @@ export default function RestaurantePOS() {
   const [isRegistering, setIsRegistering] = useState(false);
   // PARCHE: Añadido estado de carga para cobros y validaciones
   const [isProcessing, setIsProcessing] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [selectedLocation, setSelectedLocation] = useState<string>('Mesa 1');
   const [isExpress, setIsExpress] = useState(false);
@@ -186,8 +187,12 @@ export default function RestaurantePOS() {
         if (itemsError) throw new Error(`Error al insertar items: ${itemsError.message}`);
       }
 
+      // Reproducir sonido metálico de caja registradora inmediatamente
       playCashRegisterSound();
-      alert(`✅ Cobro de ₡${total.toLocaleString('es-CR')} procesado.\nIngreso registrado en Finanzas y enviado a cocina.`);
+      
+      setSuccessMessage(`Cobro de ₡${total.toLocaleString('es-CR')} procesado con éxito. Enviado a cocina y registrado en finanzas.`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+
       setOrder([]);
       setExpressName('');
     } catch (err: unknown) {
@@ -259,13 +264,41 @@ export default function RestaurantePOS() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-gray-100 p-4 gap-4">
+    <div className="flex h-[calc(100vh-64px)] bg-gray-100 p-4 gap-4 relative">
+      {/* Notificación flotante de cobro exitoso (no bloqueante para reproducir el audio al 100%) */}
+      {successMessage && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-6 py-3.5 rounded-2xl shadow-2xl shadow-emerald-600/40 flex items-center gap-3 border border-emerald-400 animate-bounce">
+          <span className="text-2xl">💰</span>
+          <div>
+            <div className="font-black text-sm">¡Venta Cobrada con Éxito!</div>
+            <div className="text-xs text-emerald-100">{successMessage}</div>
+          </div>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="ml-3 text-white/80 hover:text-white font-bold text-sm cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Lado Izquierdo: Ubicación y Menú */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Selección de Ubicación */}
         <div className="bg-white p-4 rounded-xl shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Ubicación</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold text-gray-800">Ubicación</h2>
+              <button
+                type="button"
+                onClick={() => playCashRegisterSound()}
+                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                title="Probar sonido de caja registradora"
+              >
+                <span>🔔</span>
+                <span className="hidden sm:inline">Probar Caja</span>
+              </button>
+            </div>
             <label className="flex items-center gap-2 font-semibold text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
