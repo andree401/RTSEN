@@ -43,9 +43,9 @@ export default function ReleaseNotes() {
               <div className="text-gray-300 space-y-3 mb-6">
                 <p>Novedades en esta actualización:</p>
                 <ul className="list-disc pl-5 space-y-2">
-                  <li>Nuevo submódulo de Arquitectura de Recetas para asociar insumos a platillos.</li>
-                  <li>Descuento e integración automática de existencias con el inventario.</li>
-                  <li>Mejoras de rendimiento y correcciones de estabilidad en producción.</li>
+                  <li>Protección financiera: Expiración automática de sesión por inactividad tras 15 minutos.</li>
+                  <li>Modal de advertencia con cuenta regresiva en vivo y sincronización multi-pestaña.</li>
+                  <li>Optimización y correcciones en la gestión segura de autenticación y tenants.</li>
                 </ul>
               </div>
               <div className="flex gap-3 mt-6">

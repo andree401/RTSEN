@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
+import SessionWarningModal from '../components/SessionWarningModal';
 
 export type Dish = {
   id: string;
@@ -186,6 +188,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const { isWarningOpen, remainingSeconds, resetTimer } = useInactivityTimeout({
+    enabled: !!ownerId,
+    timeoutMs: 15 * 60 * 1000, // 15 minutos de inactividad
+    warningMs: 2 * 60 * 1000,  // 2 minutos de advertencia visual previa
+    onTimeout: logout,
+  });
+
   if (!isLoaded) return null;
 
   if (!ownerId) {
@@ -195,6 +204,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{ ownerId, login, logout, menu, addDish, updateDish, deleteDish, recordFinance }}>
       {children}
+      <SessionWarningModal
+        isOpen={isWarningOpen}
+        remainingSeconds={remainingSeconds}
+        onStayLoggedIn={resetTimer}
+        onLogout={logout}
+      />
     </AppContext.Provider>
   );
 }
