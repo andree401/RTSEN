@@ -35,44 +35,61 @@ export default function AdminPanel() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50/30 text-slate-800 p-8">
       <header className="mb-10">
-        <h1 className="text-3xl font-bold text-red-500">Panel de Administrador</h1>
-        <p className="text-gray-400 mt-2">Área restringida. Manejo de base de datos y configuraciones.</p>
-        <div className="flex gap-4 mt-6">
-          <a href="/admin/inventario" className="text-blue-400 hover:text-blue-300 font-medium">Gestionar Inventario</a>
-          <a href="/admin/recetas" className="text-blue-400 hover:text-blue-300 font-medium">Gestionar Recetas</a>
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">⚙️</span>
+          <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-600 via-pink-600 to-orange-500">
+            Panel de Administrador
+          </h1>
+        </div>
+        <p className="text-slate-500 mt-2 font-medium">Área de gestión. Configuración del menú, recetas y existencias.</p>
+        <div className="flex gap-3 mt-5">
+          <a 
+            href="/admin/inventario" 
+            className="inline-flex items-center gap-1.5 bg-white shadow-sm border border-slate-200 hover:border-blue-300 text-blue-600 px-4 py-2 rounded-xl font-semibold text-xs transition-all hover:scale-105"
+          >
+            📦 Gestionar Inventario
+          </a>
+          <a 
+            href="/admin/recetas" 
+            className="inline-flex items-center gap-1.5 bg-white shadow-sm border border-slate-200 hover:border-indigo-300 text-indigo-600 px-4 py-2 rounded-xl font-semibold text-xs transition-all hover:scale-105"
+          >
+            🍳 Gestionar Recetas
+          </a>
         </div>
       </header>
 
       <main className="flex flex-col gap-8">
-        <section className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 max-w-4xl">
-          <h2 className="text-xl font-semibold mb-6 text-white border-b border-gray-700 pb-2">Configuración del Menú</h2>
+        <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 max-w-4xl">
+          <h2 className="text-lg font-bold mb-6 text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-2">
+            <span>🍽️</span> Configuración del Menú
+          </h2>
           
-          <form onSubmit={handleAddDish} className="flex gap-4 mb-8 items-end">
-            <div className="flex-1">
-              <label className="block text-sm text-gray-400 mb-1">Nombre del Platillo</label>
+          <form onSubmit={handleAddDish} className="flex flex-wrap gap-4 mb-8 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Nombre del Platillo</label>
               <input 
                 type="text" 
                 value={newDishName} 
                 onChange={e => setNewDishName(e.target.value)}
-                className="w-full bg-gray-700 text-white border border-gray-600 rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-slate-50 text-slate-800 border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                 placeholder="Ej. Tacos de Asada"
               />
             </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Precio</label>
+            <div className="w-36">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Precio</label>
               <input 
                 type="number" 
                 value={newDishPrice} 
                 onChange={e => setNewDishPrice(e.target.value)}
-                className="w-full bg-gray-700 text-white border border-gray-600 rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-slate-50 text-slate-800 border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm"
                 placeholder="Ej. 25"
                 min="0"
                 step="0.01"
               />
             </div>
-            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium transition-colors h-10">
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-semibold shadow-md shadow-blue-500/20 transition-all text-sm">
               Agregar
             </button>
           </form>
@@ -80,34 +97,34 @@ export default function AdminPanel() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="py-3 px-4 font-semibold text-gray-300">Platillo</th>
-                  <th className="py-3 px-4 font-semibold text-gray-300 w-32">Precio</th>
-                  <th className="py-3 px-4 font-semibold text-gray-300 w-48 text-right">Acciones</th>
+                <tr className="border-b border-slate-200 bg-slate-50/60 text-xs uppercase text-slate-500 font-semibold">
+                  <th className="py-3 px-4">Platillo</th>
+                  <th className="py-3 px-4 w-32">Precio</th>
+                  <th className="py-3 px-4 w-48 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 text-sm">
                 {menu.map(dish => (
-                  <tr key={dish.id} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
-                    <td className="py-3 px-4">
+                  <tr key={dish.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4 font-medium text-slate-800">
                       {editingId === dish.id ? (
                         <input 
                           type="text" 
                           value={editName}
                           onChange={e => setEditName(e.target.value)}
-                          className="bg-gray-900 border border-gray-600 rounded p-1 w-full text-white"
+                          className="bg-white border border-blue-400 rounded-lg p-1.5 w-full text-slate-800 text-sm"
                         />
                       ) : (
                         dish.name
                       )}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 font-bold text-slate-700">
                       {editingId === dish.id ? (
                         <input 
                           type="number" 
                           value={editPrice}
                           onChange={e => setEditPrice(e.target.value)}
-                          className="bg-gray-900 border border-gray-600 rounded p-1 w-full text-white"
+                          className="bg-white border border-blue-400 rounded-lg p-1.5 w-full text-slate-800 text-sm"
                         />
                       ) : (
                         `$${dish.price}`
@@ -116,13 +133,13 @@ export default function AdminPanel() {
                     <td className="py-3 px-4 text-right">
                       {editingId === dish.id ? (
                         <div className="flex justify-end gap-2">
-                          <button onClick={saveEdit} className="text-green-400 hover:text-green-300 text-sm font-medium">Guardar</button>
-                          <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-300 text-sm font-medium">Cancelar</button>
+                          <button onClick={saveEdit} className="text-emerald-600 hover:text-emerald-700 text-xs font-semibold px-2 py-1 bg-emerald-50 rounded">Guardar</button>
+                          <button onClick={() => setEditingId(null)} className="text-slate-500 hover:text-slate-700 text-xs font-semibold px-2 py-1 bg-slate-100 rounded">Cancelar</button>
                         </div>
                       ) : (
-                        <div className="flex justify-end gap-3">
-                          <button onClick={() => startEdit(dish)} className="text-blue-400 hover:text-blue-300 text-sm font-medium">Editar</button>
-                          <button onClick={() => deleteDish(dish.id)} className="text-red-400 hover:text-red-300 text-sm font-medium">Eliminar</button>
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => startEdit(dish)} className="text-blue-600 hover:text-blue-700 text-xs font-semibold px-2.5 py-1 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">Editar</button>
+                          <button onClick={() => deleteDish(dish.id)} className="text-rose-600 hover:text-rose-700 text-xs font-semibold px-2.5 py-1 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors">Eliminar</button>
                         </div>
                       )}
                     </td>
@@ -130,7 +147,7 @@ export default function AdminPanel() {
                 ))}
                 {menu.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="py-6 text-center text-gray-500">No hay platillos en el menú</td>
+                    <td colSpan={3} className="py-6 text-center text-slate-400">No hay platillos en el menú</td>
                   </tr>
                 )}
               </tbody>
@@ -138,14 +155,16 @@ export default function AdminPanel() {
           </div>
         </section>
 
-        <section className="bg-gray-800 p-6 rounded-xl shadow-lg border border-red-900/50 max-w-4xl mt-8">
-          <h2 className="text-xl font-semibold mb-4 text-white">Gestión de Datos</h2>
-          <p className="text-gray-400 mb-6 text-sm">
+        <section className="bg-rose-50/50 p-6 rounded-2xl border border-rose-200/80 max-w-4xl">
+          <h2 className="text-lg font-bold mb-2 text-rose-800 flex items-center gap-2">
+            <span>⚠️</span> Gestión de Datos
+          </h2>
+          <p className="text-slate-600 mb-5 text-xs">
             ¡Atención! Las acciones aquí son destructivas y no se pueden deshacer.
           </p>
           
-          <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <button className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl font-semibold shadow-md shadow-rose-600/20 transition-all flex items-center text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
             Purgar Base de Datos

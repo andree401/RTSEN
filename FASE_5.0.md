@@ -3,12 +3,12 @@
 Este documento detalla las próximas grandes mejoras (Features) a implementar en el **Sistema Finanzas Web Pro** para convertirlo en un producto Enterprise de clase mundial (y para justificar cobrar suscripciones caras).
 
 ## 1. Gráficos Interactivos e Inteligencia Visual 📊
-- **Objetivo:** Dejar de aburrir a los usuarios con tablas planas.
-- **Implementación:** Integrar librerías como `recharts` o `chart.js`.
-- **Características:**
-  - Gráficos de barras para ingresos vs. gastos mensuales.
-  - Gráfico de pastel para categorización de gastos (ej. nómina, insumos, servicios).
-  - Líneas de tendencia predictivas basadas en datos históricos.
+- **Estado:** ✅ 100% Completado con Recharts y soporte monetario local (Colones ₡).
+- **Características Implementadas:**
+  - Gráfico circular interactivo (PieChart) de distribución Ingresos vs. Gastos.
+  - Gráfico de barras comparativo de los últimos periodos.
+  - Línea de tendencia predictiva y balance acumulado histórico con selector interactivo.
+  - Formato financiero en Colones (₡) en estadísticas, tablas, gráficos y exportaciones.
 
 ## 2. Actualizaciones Reactivas y en Tiempo Real ⚡
 - **Objetivo:** Experiencia de usuario (UX) 100% fluida, sin necesidad de recargar la página.
@@ -54,5 +54,13 @@ Este documento detalla las próximas grandes mejoras (Features) a implementar en
 ## 8. Arquitectura de Recetas Multi-Ingrediente y POS en Colones (v4.7.1) 🍲₡
 - **Estado:** ✅ Completado e implementado en v4.7.1.
 - **Detalle:** Configuración en lote de múltiples insumos para platillos nuevos y existentes; POS de restaurante modernizado con moneda en Colones (₡), incremento/decremento dinámico (+ / -) de cantidades y comanda digital sin papel.
+
+## 9. Rediseño Luminoso, Sistema Sensorial de Audio y Centro de Historial (v5.8.0) 🎨🛎️💰
+- **Estado:** ✅ Completado e implementado en v5.8.0.
+- **Detalle:**
+  - Rediseño integral visual a tema SaaS vivo y luminoso (eliminación de modo oscuro cavernoso forzado).
+  - Alertas acústicas sintetizadas con Web Audio API: campana en Cocina KDS y sonido metálico de caja registradora en Punto de Venta.
+  - Centro interactivo de historial de versiones en `ReleaseNotes.tsx` y archivo formal `CHANGELOG.md`.
+
 
 

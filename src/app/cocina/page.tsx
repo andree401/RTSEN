@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { playOrderBell } from '@/lib/soundEffects';
 
 type Comanda = {
   id: string;
@@ -56,7 +57,10 @@ export default function CocinaKDS() {
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const fetchComandas = async () => {
+  const isInitialLoad = useRef(true);
+  const knownIdsRef = useRef<Set<string>>(new Set());
+
+  const fetchComandas = async (isNewEvent = false) => {
     try {
       const { data, error } = await supabase
         .from('comandas')
@@ -75,6 +79,18 @@ export default function CocinaKDS() {
           created_at: d.created_at || new Date().toISOString(),
           tiempo: Math.floor((now - new Date(d.created_at || now).getTime()) / 60000)
         }));
+
+        // Detectar si hay comandas nuevas tras la carga inicial
+        if (!isInitialLoad.current) {
+          const hasNew = formatted.some(c => !knownIdsRef.current.has(c.id));
+          if (hasNew || isNewEvent) {
+            playOrderBell();
+          }
+        } else {
+          isInitialLoad.current = false;
+        }
+
+        knownIdsRef.current = new Set(formatted.map(c => c.id));
         setComandas(formatted);
         setErrorStatus(null);
       }
@@ -100,9 +116,13 @@ export default function CocinaKDS() {
     // PARCHE: Añadido manejo de estado de conexión para detectar caídas
     const subscription = supabase
       .channel('comandas_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comandas' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comandas' }, (payload) => {
+        const isInsert = payload.eventType === 'INSERT';
+        if (isInsert) {
+          playOrderBell();
+        }
         // Al haber cambios, volvemos a obtener todo para traer sus items fácilmente (polling inteligente tras notificación)
-        fetchComandas();
+        fetchComandas(isInsert);
       })
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
@@ -167,10 +187,20 @@ export default function CocinaKDS() {
             ¡ZONA DE GUERRA CULINARIA! NO HAY PIEDAD.
           </p>
         </div>
-        <div className="text-right">
-          <div className="text-sm text-zinc-500 font-bold">ÓRDENES ACTIVAS</div>
-          <div className="text-6xl font-black text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
-            {comandas.length}
+        <div className="text-right flex flex-col items-end gap-2">
+          <button
+            onClick={() => playOrderBell()}
+            className="px-3 py-1 bg-orange-950/80 hover:bg-orange-900 border border-orange-500/40 text-orange-400 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-105"
+            title="Probar sonido de campana de pedidos"
+          >
+            <span>🛎️</span>
+            <span>PROBAR TIMBRE</span>
+          </button>
+          <div>
+            <div className="text-sm text-zinc-500 font-bold">ÓRDENES ACTIVAS</div>
+            <div className="text-6xl font-black text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">
+              {comandas.length}
+            </div>
           </div>
         </div>
       </div>

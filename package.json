@@ -1,6 +1,6 @@
 {
   "name": "finanzas-web-pro",
-  "version": "4.7.1",
+  "version": "5.8.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

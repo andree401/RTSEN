@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAppContext, Dish } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
+import { playCashRegisterSound } from '@/lib/soundEffects';
 
 type OrderItem = Dish & {
   quantity: number;
@@ -174,6 +175,7 @@ export default function RestaurantePOS() {
         if (itemsError) throw new Error(`Error al insertar items: ${itemsError.message}`);
       }
 
+      playCashRegisterSound();
       alert(`✅ Cobro de ₡${total.toLocaleString('es-CR')} procesado.\nIngreso registrado en Finanzas y enviado a cocina.`);
       setOrder([]);
       setExpressName('');
