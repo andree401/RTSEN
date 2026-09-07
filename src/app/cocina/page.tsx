@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useAppContext } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
 import { playOrderBell, playOrderReadySound } from '@/lib/soundEffects';
 
@@ -52,6 +53,7 @@ const createExplosion = (x: number, y: number) => {
 };
 
 export default function CocinaKDS() {
+  const { ownerId } = useAppContext();
   const [comandas, setComandas] = useState<Comanda[]>([]);
   // PARCHE: Añadido estado para manejar errores en la KDS
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
@@ -63,20 +65,54 @@ export default function CocinaKDS() {
 
   const fetchComandas = async (isNewEvent = false) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('comandas')
-        .select('*, comandas_items(*)')
+        .select('id, mesa, estado, created_at, negocio_id, comandas_items(id, cantidad, menu_item_id, menu_items(nombre))')
         .eq('estado', 'pendiente');
+
+      // Blindaje multi-tenant: si hay un negocio autenticado, filtramos solo sus comandas
+      if (ownerId) {
+        query = query.eq('negocio_id', ownerId);
+      }
+
+      const { data, error } = await query;
         
       if (error) throw error;
       
       if (data) {
         const now = new Date().getTime();
-        type ComandaData = { id: string; mesa: string; comandas_items: { nombre: string; notas?: string; cantidad?: number }[]; created_at: string };
+        type RawComandaItem = {
+          id: string;
+          cantidad?: number;
+          notas?: string;
+          menu_item_id?: string;
+          nombre?: string;
+          menu_items?: { nombre: string } | { nombre: string }[] | null;
+        };
+        type ComandaData = {
+          id: string;
+          mesa: string;
+          comandas_items: RawComandaItem[];
+          created_at: string;
+        };
         const formatted = (data as unknown as ComandaData[]).map(d => ({
           id: d.id,
           mesa: d.mesa,
-          items: d.comandas_items || [],
+          items: (d.comandas_items || []).map(item => {
+            let dishName = item.nombre;
+            if (!dishName && item.menu_items) {
+              if (Array.isArray(item.menu_items)) {
+                dishName = item.menu_items[0]?.nombre;
+              } else {
+                dishName = item.menu_items.nombre;
+              }
+            }
+            return {
+              nombre: dishName || 'Platillo',
+              notas: item.notas,
+              cantidad: item.cantidad
+            };
+          }),
           created_at: d.created_at || new Date().toISOString(),
           tiempo: Math.floor((now - new Date(d.created_at || now).getTime()) / 60000)
         }));
@@ -145,7 +181,8 @@ export default function CocinaKDS() {
       clearInterval(pollInterval);
       supabase.removeChannel(subscription);
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerId]);
 
   const despacharFuego = async (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
     // Reproducir sonido triunfal de comanda despachada / lista para servir

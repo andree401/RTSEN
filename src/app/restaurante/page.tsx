@@ -39,7 +39,7 @@ export default function RestaurantePOS() {
     if (refreshMenu) {
       refreshMenu();
     }
-  }, []);
+  }, [refreshMenu]);
 
   const filteredMenu = menu.filter((dish) =>
     dish.name?.toLowerCase().includes(dishSearch.toLowerCase())

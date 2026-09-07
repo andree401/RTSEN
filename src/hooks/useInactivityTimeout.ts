@@ -27,7 +27,7 @@ export function useInactivityTimeout({
   const [isWarningOpen, setIsWarningOpen] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(Math.ceil(warningMs / 1000));
 
-  const lastActivityRef = useRef<number>(Date.now());
+  const lastActivityRef = useRef<number>(0);
   const lastThrottleRef = useRef<number>(0);
   const hasTimedOutRef = useRef<boolean>(false);
   const onTimeoutRef = useRef(onTimeout);
@@ -41,7 +41,7 @@ export function useInactivityTimeout({
     const now = Date.now();
     lastActivityRef.current = now;
     hasTimedOutRef.current = false;
-    setIsWarningOpen(false);
+    setIsWarningOpen((prev) => (prev ? false : prev));
 
     try {
       if (typeof window !== 'undefined') {
@@ -59,11 +59,15 @@ export function useInactivityTimeout({
 
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') {
-      setIsWarningOpen(false);
       return;
     }
 
-    recordActivity();
+    const now = Date.now();
+    lastActivityRef.current = now;
+    hasTimedOutRef.current = false;
+    try {
+      localStorage.setItem(STORAGE_KEY, now.toString());
+    } catch {}
 
     const handleUserActivity = () => {
       const now = Date.now();

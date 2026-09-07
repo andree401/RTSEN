@@ -71,17 +71,21 @@ export default function FinancialCharts({ transactions }: FinancialChartsProps) 
   // Últimos 7 periodos para gráfico de barras
   const barData = sortedDates.slice(-7);
 
-  // Datos de tendencia acumulada y proyectada
-  let balanceAcumulado = 0;
-  const trendData = sortedDates.map((item, idx) => {
-    balanceAcumulado += item.Balance;
-    return {
-      date: item.date,
-      BalanceDiario: item.Balance,
-      BalanceAcumulado: balanceAcumulado,
-      TendenciaPromedio: Math.round(balanceAcumulado / (idx + 1)),
-    };
-  });
+  // Datos de tendencia acumulada y proyectada (cálculo puro e inmutable)
+  const trendData = sortedDates.reduce<Array<{ date: string; BalanceDiario: number; BalanceAcumulado: number; TendenciaPromedio: number }>>(
+    (acc, item, idx) => {
+      const prevAcumulado = idx > 0 ? acc[idx - 1].BalanceAcumulado : 0;
+      const totalAcumulado = prevAcumulado + item.Balance;
+      acc.push({
+        date: item.date,
+        BalanceDiario: item.Balance,
+        BalanceAcumulado: totalAcumulado,
+        TendenciaPromedio: Math.round(totalAcumulado / (idx + 1)),
+      });
+      return acc;
+    },
+    []
+  );
 
   return (
     <section className="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -110,7 +114,7 @@ export default function FinancialCharts({ transactions }: FinancialChartsProps) 
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: any) => [formatColones(value), '']}
+                formatter={(value) => [formatColones(Number(value) || 0), '']}
                 contentStyle={{ 
                   backgroundColor: '#ffffff', 
                   borderColor: '#e2e8f0', 
@@ -176,7 +180,7 @@ export default function FinancialCharts({ transactions }: FinancialChartsProps) 
                 <YAxis stroke="#94a3b8" tickFormatter={(v) => `₡${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
                 <Tooltip
                   cursor={{ fill: '#f8fafc', opacity: 0.8 }}
-                  formatter={(value: any) => [formatColones(value), '']}
+                  formatter={(value) => [formatColones(Number(value) || 0), '']}
                   contentStyle={{ 
                     backgroundColor: '#ffffff', 
                     borderColor: '#e2e8f0', 
@@ -195,7 +199,7 @@ export default function FinancialCharts({ transactions }: FinancialChartsProps) 
                 <XAxis dataKey="date" stroke="#94a3b8" tick={{ fontSize: 12 }} />
                 <YAxis stroke="#94a3b8" tickFormatter={(v) => `₡${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
                 <Tooltip
-                  formatter={(value: any) => [formatColones(value), '']}
+                  formatter={(value) => [formatColones(Number(value) || 0), '']}
                   contentStyle={{ 
                     backgroundColor: '#ffffff', 
                     borderColor: '#e2e8f0', 

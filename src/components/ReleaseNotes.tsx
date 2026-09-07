@@ -161,7 +161,8 @@ export default function ReleaseNotes() {
   useEffect(() => {
     const lastSeenVersion = localStorage.getItem('last_seen_version');
     if (lastSeenVersion !== CURRENT_VERSION) {
-      setIsOpen(true);
+      const timer = setTimeout(() => setIsOpen(true), 0);
+      return () => clearTimeout(timer);
     }
   }, []);
 
