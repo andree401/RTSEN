@@ -202,24 +202,26 @@ export default function ReleaseNotes() {
     >
       <div className="bg-white border border-slate-200/80 rounded-3xl shadow-2xl shadow-indigo-500/10 max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden text-slate-800">
         
-        {/* Encabezado Principal */}
-        <div className="relative p-6 sm:p-8 border-b border-slate-100 bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-pink-50/40 flex items-start justify-between gap-4">
+        {/* Encabezado Principal Formal */}
+        <div className="relative p-6 sm:p-8 border-b border-slate-100 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-start justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-wider mb-2 border border-indigo-200/50">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              ¡Actualización v{CURRENT_VERSION}!
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-2.5 border border-emerald-500/30">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              Versión Oficial v{CURRENT_VERSION} Enterprise
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600">
-              RTSEN ERP
+            
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white leading-tight">
+              Presentamos la nueva experiencia de administración de negocio.
             </h1>
-            <p className="text-slate-500 text-xs sm:text-sm mt-1">
-              Descubre las nuevas características, efectos y la evolución histórica de tu sistema.
+            
+            <p className="text-slate-300 text-xs sm:text-sm mt-2 max-w-2xl leading-relaxed">
+              Le damos la más cordial bienvenida a la versión 5.0.0 de RTSEN ERP. Diseñada con estándares de grado corporativo, máxima confidencialidad operativa y arquitectura multi-tenant de alto rendimiento.
             </p>
           </div>
 
           <button
             onClick={handleClose}
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-all font-bold text-lg cursor-pointer"
+            className="w-9 h-9 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all font-bold text-lg cursor-pointer border border-slate-700"
             title="Cerrar"
           >
             ✕
@@ -267,71 +269,71 @@ export default function ReleaseNotes() {
         <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1 bg-white">
           {activeTab === 'novedades' && (
             <>
-              {/* Tarjetas de Novedades v5.8 */}
+              {/* Tarjetas de Novedades v5.0.0 Enterprise */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 
-                {/* Feature 1: Rediseño Luminoso */}
-                <div className="bg-slate-50/70 border border-indigo-100 hover:border-indigo-300 rounded-2xl p-5 transition-all flex flex-col justify-between hover:shadow-md group">
+                {/* Feature 1: Facturación y Suscripciones */}
+                <div className="bg-slate-50/80 border border-indigo-100 hover:border-indigo-300 rounded-2xl p-5 transition-all flex flex-col justify-between hover:shadow-md group">
                   <div>
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-400 to-orange-400 flex items-center justify-center text-white text-2xl shadow-md shadow-orange-500/20 mb-3 group-hover:scale-105 transition-transform">
-                      🎨
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white text-2xl shadow-md shadow-indigo-600/20 mb-3 group-hover:scale-105 transition-transform">
+                      💳
                     </div>
                     <h3 className="text-base font-bold text-slate-800 mb-2">
-                      Interfaz Viva & Luminosa
+                      Gestión Financiera & Stripe Billing
                     </h3>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Adiós al modo oscuro opaco. Ahora disfrutas de una estética SaaS limpia, luminosa y moderna con métricas de alto contraste.
+                      Planes de suscripción Pro Mensual y Anual, portal seguro para administración de tarjetas y extensión flexible de períodos de evaluación con un solo clic.
                     </p>
                   </div>
-                  <span className="mt-4 text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md self-start border border-indigo-100">
-                    Diseño & UI
+                  <span className="mt-4 text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md self-start border border-indigo-200">
+                    Suscripciones & Cobros
                   </span>
                 </div>
 
-                {/* Feature 2: Audio en Cocina */}
-                <div className="bg-slate-50/70 border border-orange-100 hover:border-orange-300 rounded-2xl p-5 transition-all flex flex-col justify-between hover:shadow-md group">
+                {/* Feature 2: PWA Multi-Plataforma */}
+                <div className="bg-slate-50/80 border border-emerald-100 hover:border-emerald-300 rounded-2xl p-5 transition-all flex flex-col justify-between hover:shadow-md group">
                   <div>
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-orange-500 to-red-500 flex items-center justify-center text-white text-2xl shadow-md shadow-orange-500/20 mb-3 group-hover:scale-105 transition-transform">
-                      🛎️
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white text-2xl shadow-md shadow-emerald-500/20 mb-3 group-hover:scale-105 transition-transform">
+                      📱
                     </div>
                     <h3 className="text-base font-bold text-slate-800 mb-2">
-                      Campana de Cocina KDS
+                      Modo Aplicación PWA Offline
                     </h3>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Alerta sonora acústica automática al registrarse pedidos nuevos, para que los cocineros nunca pasen una orden por alto.
+                      Instalación directa en terminales móviles, tablets y ordenadores de escritorio. Operatividad continua mediante caché inteligente de Service Worker.
                     </p>
                   </div>
-                  <span className="mt-4 text-[11px] font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-md self-start border border-orange-100">
-                    Audio en Cocina
+                  <span className="mt-4 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md self-start border border-emerald-200">
+                    Movilidad & Offline
                   </span>
                 </div>
 
-                {/* Feature 3: Sonido de Cobro en Caja */}
-                <div className="bg-slate-50/70 border border-emerald-100 hover:border-emerald-300 rounded-2xl p-5 transition-all flex flex-col justify-between hover:shadow-md group">
+                {/* Feature 3: Seguridad Multi-Tenant RLS */}
+                <div className="bg-slate-50/80 border border-slate-200 hover:border-slate-400 rounded-2xl p-5 transition-all flex flex-col justify-between hover:shadow-md group">
                   <div>
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white text-2xl shadow-md shadow-emerald-500/20 mb-3 group-hover:scale-105 transition-transform">
-                      💰
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-slate-800 to-slate-950 flex items-center justify-center text-white text-2xl shadow-md shadow-slate-800/20 mb-3 group-hover:scale-105 transition-transform">
+                      🔒
                     </div>
                     <h3 className="text-base font-bold text-slate-800 mb-2">
-                      Cobro con Efecto de Caja
+                      Seguridad Estricta Multi-Tenant
                     </h3>
                     <p className="text-slate-600 text-xs leading-relaxed">
-                      Efecto &ldquo;Cha-ching!&rdquo; metálico sintetizado al procesar el pago de mesas y órdenes express en el Punto de Venta.
+                      Aislamiento criptográfico a nivel de PostgreSQL con Row Level Security (RLS) en Supabase, garantizando la privacidad absoluta de los datos de su establecimiento.
                     </p>
                   </div>
-                  <span className="mt-4 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md self-start border border-emerald-100">
-                    Punto de Venta
+                  <span className="mt-4 text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md self-start border border-slate-200">
+                    Protección de Datos
                   </span>
                 </div>
 
               </div>
 
-              {/* Banner Informativo */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-center gap-3.5 text-xs text-slate-700">
-                <span className="text-2xl">⚡</span>
+              {/* Banner Informativo Formal */}
+              <div className="bg-gradient-to-r from-slate-900 to-indigo-950 border border-indigo-900/40 rounded-2xl p-4 flex items-center gap-3.5 text-xs text-slate-200 shadow-sm">
+                <span className="text-2xl">🏛️</span>
                 <div>
-                  <strong className="text-slate-900 block font-bold">100% Autónomo con Web Audio API:</strong>
-                  Los sonidos se generan matemáticamente en tu navegador sin depender de archivos de audio externos que puedan fallar sin conexión.
+                  <strong className="text-white block font-bold">Arquitectura Empresarial RTSEN 5.0:</strong>
+                  Sincronización en tiempo real entre comandas de salón, terminales de cobro POS, pantalla táctil de cocina KDS y control unificado de inventario con conversión dual de unidades.
                 </div>
               </div>
             </>
