@@ -1,9 +1,11 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { supabase } from '../lib/supabaseClient';
 import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
 import SessionWarningModal from '../components/SessionWarningModal';
+import LoginPage from '../app/login/page';
 
 export type Dish = {
   id: string;
@@ -337,9 +339,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   if (!isLoaded) return null;
 
-  if (!ownerId) {
-    return <LoginPage />;
+  let pathname = '';
+  try {
+    pathname = usePathname() || '';
+  } catch {
+    pathname = '';
   }
+
+  const isSysOps = pathname.startsWith('/sys-ops');
+  const isLoginPage = pathname.startsWith('/login');
+
+  return (
+    <AppContext.Provider
+      value={{
+        ownerId,
+        activeRole,
+        currentEmployee,
+        login,
+        loginWithPin,
+        setStationSession,
+        logout,
+        menu,
+        refreshMenu,
+        addDish,
+        updateDish,
+        deleteDish,
+        recordFinance,
+      }}
+    >
+      {!ownerId && !isSysOps && !isLoginPage ? (
+        <LoginPage />
+      ) : (
+        <>
+          {children}
+          {ownerId && (
+            <SessionWarningModal
+              isOpen={isWarningOpen}
+              remainingSeconds={remainingSeconds}
+              onStayLoggedIn={resetTimer}
+              onLogout={logout}
+            />
+          )}
+        </>
+      )}
+    </AppContext.Provider>
+  );
+}
 
 export function useAppContext() {
   const context = useContext(AppContext);
