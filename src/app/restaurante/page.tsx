@@ -287,18 +287,7 @@ export default function RestaurantePOS() {
         {/* Selección de Ubicación */}
         <div className="bg-white p-4 rounded-xl shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold text-gray-800">Ubicación</h2>
-              <button
-                type="button"
-                onClick={() => playCashRegisterSound()}
-                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                title="Probar sonido de caja registradora"
-              >
-                <span>🔔</span>
-                <span className="hidden sm:inline">Probar Caja</span>
-              </button>
-            </div>
+            <h2 className="text-xl font-bold text-gray-800">Ubicación</h2>
             <label className="flex items-center gap-2 font-semibold text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
