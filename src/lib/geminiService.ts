@@ -93,17 +93,21 @@ export class GeminiService {
         })
       });
 
-      // Si no estuviese disponible en la región o endpoint actual, degradar limpiamente a gemini-1.5-flash
+      // Cadena de respaldo moderna si 3.8 Flash no responde (Gemini 3.7 Flash y Gemini 3.1 Flash-Lite)
       if (!res.ok && (res.status === 404 || res.status === 400)) {
-        const fallbackRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${trimmedKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: contextPrompt }] }]
-          })
-        });
-        if (fallbackRes.ok) {
-          res = fallbackRes;
+        const fallbacks = ['gemini-3.7-flash', 'gemini-3.1-flash-lite'];
+        for (const modelFallback of fallbacks) {
+          const fallbackRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelFallback}:generateContent?key=${trimmedKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: contextPrompt }] }]
+            })
+          });
+          if (fallbackRes.ok) {
+            res = fallbackRes;
+            break;
+          }
         }
       }
 
