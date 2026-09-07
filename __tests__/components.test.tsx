@@ -12,12 +12,12 @@ vi.mock('../src/context/AppContext', () => ({
 }));
 
 describe('ClientHeader (Dashboard render)', () => {
-  it('renders navigation links', () => {
+  it('renders navigation links and owner portal button', () => {
     render(<ClientHeader />);
     expect(screen.getByText('Finanzas')).toBeInTheDocument();
-    expect(screen.getByText('Restaurante')).toBeInTheDocument();
-    expect(screen.getByText('COCINA')).toBeInTheDocument();
     expect(screen.getByText('Admin')).toBeInTheDocument();
+    expect(screen.getByText('Configuración')).toBeInTheDocument();
+    expect(screen.getByText('Portal Dueño')).toBeInTheDocument();
   });
 
   it('renders logout button', () => {

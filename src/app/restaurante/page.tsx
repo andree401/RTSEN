@@ -391,9 +391,23 @@ export default function RestaurantePOS() {
           <p className="text-gray-600 font-medium text-lg mt-1">
             {isExpress ? `Exprés: ${expressName || 'Cliente'}` : selectedLocation}
           </p>
-          <p className="text-gray-400 text-sm mt-1">
-            Cajero: {currentCashier?.name}
-          </p>
+          <div className="flex items-center justify-center gap-2 mt-1">
+            <span className="text-gray-500 text-xs font-medium">
+              Cajero: <strong className="text-slate-700">{currentCashier?.name}</strong>
+            </span>
+            <button
+              onClick={() => {
+                setIsCashierLoggedIn(false);
+                setCurrentCashier(null);
+                setInputId('');
+                setOrder([]);
+              }}
+              className="text-[10px] text-rose-600 hover:text-rose-700 font-bold underline cursor-pointer ml-1"
+              title="Cerrar turno de cajero"
+            >
+              (Cerrar Turno)
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-auto">

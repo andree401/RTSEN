@@ -2,9 +2,11 @@
 
 import { useAppContext } from '../context/AppContext';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function ClientHeader() {
   const { logout } = useAppContext();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
@@ -13,6 +15,12 @@ export default function ClientHeader() {
       console.error('Error logging out:', e);
     }
   };
+
+  // En la estación de Cocina KDS y en el POS de Restaurante, aislamos la barra para que
+  // ni los cajeros ni los cocineros tengan acceso directo a Admin o Finanzas.
+  const currentPath = pathname || '';
+  const isTerminalMode = currentPath.startsWith('/cocina') || currentPath.startsWith('/restaurante');
+  const isOwnerMode = currentPath.startsWith('/owner');
 
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 px-6 py-3.5 shadow-sm print:hidden">
@@ -32,46 +40,59 @@ export default function ClientHeader() {
             </div>
           </Link>
 
-          <nav className="flex gap-2 font-medium items-center text-sm">
-            <Link 
-              href="/" 
-              className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-blue-50/80 transition-all"
-            >
-              Finanzas
-            </Link>
-            <Link 
-              href="/restaurante" 
-              className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-blue-50/80 transition-all"
-            >
-              Restaurante
-            </Link>
-            <Link 
-              href="/cocina" 
-              className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold tracking-wider text-xs shadow-sm shadow-orange-500/30 hover:shadow-md hover:scale-105 transition-all"
-            >
-              COCINA
-            </Link>
-            <Link 
-              href="/admin" 
-              className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-rose-600 hover:bg-rose-50/80 transition-all"
-            >
-              Admin
-            </Link>
-            <Link 
-              href="/configuracion" 
-              className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all"
-            >
-              Configuración
-            </Link>
-          </nav>
+          {isTerminalMode ? (
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <span>🔒</span>
+                <span>Modo Estación Operativa Aislada</span>
+              </span>
+            </div>
+          ) : (
+            <nav className="flex gap-2 font-medium items-center text-sm">
+              <Link 
+                href="/" 
+                className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-blue-50/80 transition-all"
+              >
+                Finanzas
+              </Link>
+              <Link 
+                href="/admin" 
+                className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-rose-600 hover:bg-rose-50/80 transition-all"
+              >
+                Admin
+              </Link>
+              <Link 
+                href="/configuracion" 
+                className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all"
+              >
+                Configuración
+              </Link>
+            </nav>
+          )}
         </div>
 
-        <button 
-          onClick={handleLogout} 
-          className="text-xs font-semibold bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 px-3.5 py-1.5 rounded-lg border border-slate-200 transition-all shadow-sm"
-        >
-          Salir
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Botón de acceso exclusivo al Portal del Dueño */}
+          <Link
+            href="/owner"
+            className={`text-xs font-black px-3.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 shadow-sm ${
+              isOwnerMode
+                ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/20'
+                : 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 hover:border-violet-300'
+            }`}
+            title="Portal Maestro del Propietario"
+          >
+            <span>👑</span>
+            <span className="hidden sm:inline">Portal Dueño</span>
+          </Link>
+
+          <button 
+            onClick={handleLogout} 
+            className="text-xs font-semibold bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 px-3.5 py-1.5 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
+          >
+            Salir
+          </button>
+        </div>
       </div>
     </header>
   );
