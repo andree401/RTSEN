@@ -140,7 +140,7 @@ export default function ReleaseNotes() {
               ¡Actualización v{CURRENT_VERSION}!
             </div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600">
-              Finanzas Web Pro & ERP
+              RTSEN ERP
             </h1>
             <p className="text-slate-500 text-xs sm:text-sm mt-1">
               Descubre las nuevas características, efectos y la evolución histórica de tu sistema.
@@ -271,7 +271,7 @@ export default function ReleaseNotes() {
             <div className="space-y-6">
               <div className="border-b border-slate-100 pb-3">
                 <h2 className="text-lg font-bold text-slate-900">Evolución del Proyecto</h2>
-                <p className="text-xs text-slate-500">Historial cronológico de cambios, hitos y versiones de Finanzas Web Pro.</p>
+                <p className="text-xs text-slate-500">Historial cronológico de cambios, hitos y versiones de RTSEN.</p>
               </div>
 
               <div className="relative pl-6 border-l-2 border-indigo-200 space-y-8 my-4">

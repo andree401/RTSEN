@@ -5,12 +5,12 @@ export default function DocsPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-4xl mx-auto bg-gray-800 p-8 rounded-xl shadow-lg border border-gray-700">
-        <h1 className="text-4xl font-bold mb-6 text-blue-400">Documentación de Uso - Finanzas Web Pro</h1>
+        <h1 className="text-4xl font-bold mb-6 text-blue-400">Documentación de Uso - RTSEN</h1>
         
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">1. Introducción</h2>
           <p className="text-gray-300 leading-relaxed">
-            Bienvenido al ERP SaaS <strong>Finanzas Web Pro</strong>. Este sistema te permite gestionar las finanzas, 
+            Bienvenido al ERP SaaS <strong>RTSEN</strong>. Este sistema te permite gestionar las finanzas, 
             operaciones de cocina y flujos de trabajo de tu restaurante en una sola plataforma multi-tenant.
           </p>
         </section>

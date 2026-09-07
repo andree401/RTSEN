@@ -24,10 +24,10 @@ export default function ClientHeader() {
             </span>
             <div className="flex flex-col">
               <span className="font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-lg leading-tight tracking-tight">
-                Finanzas Pro
+                RTSEN
               </span>
               <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
-                SaaS Restaurant
+                ERP Restaurante
               </span>
             </div>
           </Link>
