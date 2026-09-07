@@ -22,18 +22,25 @@ export default function ConfiguracionPage() {
 
       const res = await fetch('/api/auth/delete-account', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ access_token: session.access_token }),
       });
       
       if (res.ok) {
-        alert('Cuenta eliminada exitosamente.');
+        alert('Cuenta y todos sus datos han sido eliminados de forma irreversible.');
+        try {
+          localStorage.removeItem('fw_last_activity_timestamp');
+          localStorage.removeItem('gemini_api_key');
+        } catch {}
         await logout();
         router.push('/');
       } else {
-        const errorText = await res.text();
-        console.error('Error deleting account:', errorText);
-        alert('Hubo un error al intentar eliminar la cuenta.');
+        const errorData = await res.json().catch(() => ({ error: 'Error en el servidor' }));
+        console.error('Error deleting account:', errorData);
+        alert(`Hubo un error al intentar eliminar la cuenta: ${errorData.error || 'Intenta de nuevo'}`);
       }
 
     } catch (e) {

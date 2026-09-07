@@ -54,7 +54,7 @@ export default function Dashboard() {
   const handleDelete = async (id: number) => {
     try {
       await FinanceService.deleteTransaction(id);
-      setTransactions(transactions.filter(tx => tx.id !== id));
+      setTransactions(prev => prev.filter(tx => tx.id !== id));
     } catch (error) {
       console.error(error);
     }
@@ -74,11 +74,22 @@ export default function Dashboard() {
 
   const handleSaveEdit = async () => {
     if (!editingTx) return;
+    const desc = (editFormData.descripcion || '').trim();
+    if (!desc) {
+      alert('La descripción no puede estar vacía.');
+      return;
+    }
+    const monto = parseMonto(editFormData.monto);
+    if (monto <= 0) {
+      alert('El monto debe ser un número positivo.');
+      return;
+    }
+
     try {
       const updated = await FinanceService.updateTransaction(editingTx.id, {
-        descripcion: editFormData.descripcion,
+        descripcion: desc,
         tipo: editFormData.tipo as 'Ingreso' | 'Gasto',
-        monto: editFormData.monto
+        monto: monto
       });
       setTransactions(transactions.map(tx => tx.id === editingTx.id ? updated : tx));
       setEditingTx(null);
@@ -92,52 +103,103 @@ export default function Dashboard() {
     setEditingTx(null);
   };
 
+  const parseMonto = (m: unknown): number => {
+    const val = Number(m);
+    return Number.isFinite(val) ? val : 0;
+  };
+
   const getFilteredTransactions = () => {
+    const term = (searchTerm || '').trim().toLowerCase();
+    if (!term) return transactions;
     return transactions.filter(tx => 
-      tx.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
+      Boolean(
+        (tx?.descripcion && tx.descripcion.toLowerCase().includes(term)) ||
+        (tx?.categoria && tx.categoria.toLowerCase().includes(term)) ||
+        (tx?.tipo && tx.tipo.toLowerCase().includes(term))
+      )
     );
   };
 
   const formatDate = (tx: Transaction) => {
-    return tx.fecha ? new Date(tx.fecha).toLocaleDateString() : (tx.created_at ? new Date(tx.created_at).toLocaleDateString() : 'N/A');
+    const rawDate = tx.fecha || tx.created_at;
+    if (!rawDate) return 'N/A';
+    const d = new Date(rawDate);
+    return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('es-CR');
   };
 
   const handleExportCSV = () => {
     const filtered = getFilteredTransactions();
+    if (filtered.length === 0) {
+      alert('No hay transacciones disponibles para exportar.');
+      return;
+    }
+
     const exportData = filtered.map(tx => ({
       ID: tx.id,
       Fecha: formatDate(tx),
-      Descripción: tx.descripcion,
+      Descripción: tx.descripcion || 'Sin descripción',
+      Categoría: tx.categoria || 'General',
       Tipo: tx.tipo,
-      Monto: Number(tx.monto).toFixed(2)
+      'Monto (CRC)': parseMonto(tx.monto)
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Transacciones');
     
-    XLSX.writeFile(workbook, 'transacciones.xlsx');
+    XLSX.writeFile(workbook, `transacciones_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Reporte de Transacciones', 14, 15);
-    
     const filtered = getFilteredTransactions();
+    if (filtered.length === 0) {
+      alert('No hay transacciones disponibles para exportar.');
+      return;
+    }
+
+    const doc = new jsPDF();
+    
+    // Encabezado profesional
+    doc.setFontSize(18);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Reporte Financiero y Contable', 14, 18);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-CR')} ${new Date().toLocaleTimeString('es-CR')}`, 14, 25);
+
+    // Resumen de Totales
+    const totalIngresos = filtered
+      .filter(t => t.tipo === 'Ingreso')
+      .reduce((acc, t) => acc + parseMonto(t.monto), 0);
+    const totalGastos = filtered
+      .filter(t => t.tipo === 'Gasto')
+      .reduce((acc, t) => acc + parseMonto(t.monto), 0);
+    const balance = totalIngresos - totalGastos;
+
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text(`Ingresos: CRC ${totalIngresos.toLocaleString('es-CR', { minimumFractionDigits: 2 })}   |   Gastos: CRC ${totalGastos.toLocaleString('es-CR', { minimumFractionDigits: 2 })}   |   Balance: CRC ${balance.toLocaleString('es-CR', { minimumFractionDigits: 2 })}`, 14, 32);
+
+    // Evitar el símbolo ₡ (U+20A1) en jsPDF estándar porque corrompe caracteres en fuentes Latin-1
     const tableData = filtered.map(tx => [
       formatDate(tx),
-      tx.descripcion,
+      tx.descripcion || 'Sin descripción',
+      tx.categoria || 'General',
       tx.tipo,
-      `₡${Number(tx.monto).toLocaleString('es-CR')}`
+      `CRC ${parseMonto(tx.monto).toLocaleString('es-CR', { minimumFractionDigits: 2 })}`
     ]);
 
     autoTable(doc, {
-      startY: 20,
-      head: [['Fecha', 'Descripción', 'Tipo', 'Monto']],
+      startY: 37,
+      head: [['Fecha', 'Descripción', 'Categoría', 'Tipo', 'Monto']],
       body: tableData,
+      headStyles: { fillColor: [79, 70, 229], fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 3 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
-    doc.save('transacciones.pdf');
+    doc.save(`reporte_financiero_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   return (

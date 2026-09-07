@@ -63,11 +63,29 @@ export function useInactivityTimeout({
     }
 
     const now = Date.now();
-    lastActivityRef.current = now;
-    hasTimedOutRef.current = false;
+    let initialTimestamp = now;
     try {
-      localStorage.setItem(STORAGE_KEY, now.toString());
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed <= now) {
+          // Preservar la última actividad real para no burlar los 15 minutos en recargas/navegación
+          initialTimestamp = parsed;
+        }
+      }
+      localStorage.setItem(STORAGE_KEY, initialTimestamp.toString());
     } catch {}
+
+    lastActivityRef.current = initialTimestamp;
+    hasTimedOutRef.current = false;
+
+    // Si ya había expirado el tiempo de inactividad mientras estaba fuera, forzar logout inmediato
+    if (now - initialTimestamp >= timeoutMs) {
+      hasTimedOutRef.current = true;
+      setIsWarningOpen(false);
+      onTimeoutRef.current();
+      return;
+    }
 
     const handleUserActivity = () => {
       const now = Date.now();

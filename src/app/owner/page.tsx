@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAppContext } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
+
+const DEFAULT_MASTER_PIN = '0000';
 
 export default function OwnerMasterPortal() {
   const { ownerId, logout } = useAppContext();
@@ -15,65 +17,206 @@ export default function OwnerMasterPortal() {
   });
   const [empleados, setEmpleados] = useState<Array<{ id: string; nombre: string; pin: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Aislamiento Zero-Trust: Bloqueo de acceso maestro con PIN del Propietario
+  const [isMasterAuthenticated, setIsMasterAuthenticated] = useState<boolean>(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  // Privacidad de credenciales frente a espionaje de hombro (shoulder-surfing)
+  const [revealedPins, setRevealedPins] = useState<Set<string>>(new Set());
+  const [showAllPins, setShowAllPins] = useState<boolean>(false);
 
   useEffect(() => {
-    async function loadMasterData() {
-      if (!ownerId) return;
-      try {
-        setIsLoading(true);
-
-        // 1. Empleados registrados
-        const { data: empData } = await supabase
-          .from('empleados')
-          .select('id, nombre, pin')
-          .eq('negocio_id', ownerId);
-
-        if (empData) {
-          setEmpleados(empData);
-        }
-
-        // 2. Platillos del menú
-        const { count: menuCount } = await supabase
-          .from('menu_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('negocio_id', ownerId);
-
-        // 3. Comandas activas en cocina
-        const { count: comandasCount } = await supabase
-          .from('comandas')
-          .select('*', { count: 'exact', head: true })
-          .eq('negocio_id', ownerId);
-
-        // 4. Finanzas del día (ingresos)
-        const todayStr = new Date().toISOString().split('T')[0];
-        const { data: transData } = await supabase
-          .from('finanzas_registros')
-          .select('monto, tipo, fecha, created_at')
-          .eq('negocio_id', ownerId)
-          .or(`fecha.gte.${todayStr},created_at.gte.${todayStr}`);
-
-        let ingresosDia = 0;
-        if (transData) {
-          ingresosDia = transData
-            .filter(t => t.tipo === 'Ingreso')
-            .reduce((acc, curr) => acc + Number(curr.monto), 0);
-        }
-
-        setStats({
-          totalEmpleados: empData?.length || 0,
-          totalPlatillos: menuCount || 0,
-          totalComandasActivas: comandasCount || 0,
-          ingresosHoy: ingresosDia,
-        });
-      } catch (err) {
-        console.error('Error cargando métricas de dueño:', err);
-      } finally {
-        setIsLoading(false);
+    if (typeof window !== 'undefined') {
+      const storedAuth = sessionStorage.getItem('fw_owner_authenticated');
+      if (storedAuth === 'true') {
+        setIsMasterAuthenticated(true);
       }
     }
+  }, []);
 
-    loadMasterData();
+  const handleMasterUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput.trim() === DEFAULT_MASTER_PIN) {
+      setIsMasterAuthenticated(true);
+      setPinError(null);
+      try {
+        sessionStorage.setItem('fw_owner_authenticated', 'true');
+      } catch {}
+    } else {
+      setPinError('PIN Maestro incorrecto. Acceso denegado.');
+      setPinInput('');
+    }
+  };
+
+  const handleMasterLock = () => {
+    setIsMasterAuthenticated(false);
+    try {
+      sessionStorage.removeItem('fw_owner_authenticated');
+    } catch {}
+  };
+
+  const togglePinVisibility = (empId: string) => {
+    setRevealedPins(prev => {
+      const updated = new Set(prev);
+      if (updated.has(empId)) {
+        updated.delete(empId);
+      } else {
+        updated.add(empId);
+      }
+      return updated;
+    });
+  };
+
+  const toggleAllPins = () => {
+    if (showAllPins) {
+      setRevealedPins(new Set());
+      setShowAllPins(false);
+    } else {
+      setRevealedPins(new Set(empleados.map(e => e.id)));
+      setShowAllPins(true);
+    }
+  };
+
+  const loadMasterData = useCallback(async () => {
+    if (!ownerId) return;
+    try {
+      setIsRefreshing(true);
+
+      // 1. Empleados registrados
+      const { data: empData } = await supabase
+        .from('empleados')
+        .select('id, nombre, pin')
+        .eq('negocio_id', ownerId);
+
+      if (empData) {
+        setEmpleados(empData);
+      }
+
+      // 2. Platillos del menú
+      const { count: menuCount } = await supabase
+        .from('menu_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('negocio_id', ownerId);
+
+      // 3. Comandas activas en cocina (estrictamente pendientes)
+      const { count: comandasCount } = await supabase
+        .from('comandas')
+        .select('*', { count: 'exact', head: true })
+        .eq('negocio_id', ownerId)
+        .eq('estado', 'pendiente');
+
+      // 4. Finanzas del día (ingresos con zona horaria local segura)
+      const now = new Date();
+      const localYear = now.getFullYear();
+      const localMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const localDay = String(now.getDate()).padStart(2, '0');
+      const localTodayStr = `${localYear}-${localMonth}-${localDay}`;
+      const startOfDay = new Date(localYear, now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const startOfDayIso = startOfDay.toISOString();
+
+      const { data: transData } = await supabase
+        .from('finanzas_registros')
+        .select('monto, tipo, fecha, created_at')
+        .eq('negocio_id', ownerId)
+        .or(`fecha.eq.${localTodayStr},created_at.gte.${startOfDayIso}`);
+
+      let ingresosDia = 0;
+      if (transData) {
+        ingresosDia = transData
+          .filter(t => {
+            if (t.tipo !== 'Ingreso') return false;
+            const matchesFecha = t.fecha && t.fecha.startsWith(localTodayStr);
+            const matchesCreated = t.created_at && new Date(t.created_at) >= startOfDay;
+            return matchesFecha || matchesCreated;
+          })
+          .reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0);
+      }
+
+      setStats({
+        totalEmpleados: empData?.length || 0,
+        totalPlatillos: menuCount || 0,
+        totalComandasActivas: comandasCount || 0,
+        ingresosHoy: ingresosDia,
+      });
+    } catch (err) {
+      console.error('Error cargando métricas de dueño:', err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   }, [ownerId]);
+
+  useEffect(() => {
+    loadMasterData();
+    const interval = setInterval(() => {
+      loadMasterData();
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [loadMasterData]);
+
+  // Pantalla de Bloqueo Zero-Trust para el Portal del Dueño
+  if (!isMasterAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans">
+        <div className="bg-slate-900 border border-violet-800/40 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden text-center">
+          <div className="absolute -top-16 -right-16 w-36 h-36 bg-violet-600/10 rounded-full blur-2xl pointer-events-none" />
+          
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-400 via-violet-600 to-indigo-500 p-0.5 mx-auto mb-4 shadow-lg shadow-violet-600/30">
+            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-3xl">
+              🛡️
+            </div>
+          </div>
+
+          <span className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase bg-amber-400/20 text-amber-300 border border-amber-400/30">
+            AISLAMIENTO ZERO-TRUST
+          </span>
+          <h2 className="text-xl font-black text-white mt-3 mb-1">
+            Portal Central del Dueño
+          </h2>
+          <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+            Esta zona contiene métricas confidenciales y credenciales de personal. Ingrese el PIN Maestro de Propietario para desbloquear.
+          </p>
+
+          <form onSubmit={handleMasterUnlock} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={8}
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                placeholder="PIN Maestro (ej. 0000)"
+                autoFocus
+                className="w-full text-center text-xl tracking-[0.3em] font-mono bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-white p-3 rounded-xl outline-none transition-all placeholder:text-slate-600 placeholder:text-xs placeholder:tracking-normal"
+              />
+              {pinError && (
+                <p className="text-xs text-rose-400 mt-2 font-semibold">
+                  {pinError}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-amber-600/20 active:scale-98 cursor-pointer"
+            >
+              Desbloquear Supervisión Central
+            </button>
+          </form>
+
+          <div className="mt-6 pt-4 border-t border-slate-800 flex justify-between text-xs text-slate-500">
+            <Link href="/" className="hover:text-slate-300 transition-colors">
+              ← Volver al Panel
+            </Link>
+            <span>PIN predeterminado: 0000</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-6 lg:p-10 font-sans">
@@ -105,19 +248,35 @@ export default function OwnerMasterPortal() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                onClick={loadMasterData}
+                disabled={isRefreshing}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                title="Actualizar métricas en vivo"
+              >
+                <span className={isRefreshing ? 'animate-spin' : ''}>↻</span>
+                <span>{isRefreshing ? 'Actualizando...' : 'Recargar'}</span>
+              </button>
               <Link
                 href="/"
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm"
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shadow-sm"
               >
                 <span>📊</span>
-                <span>Panel Financiero</span>
+                <span>Finanzas</span>
               </Link>
               <button
-                onClick={logout}
-                className="px-4 py-2 bg-rose-900/60 hover:bg-rose-900 text-rose-200 text-xs font-bold rounded-xl border border-rose-700/50 transition-all cursor-pointer"
+                onClick={handleMasterLock}
+                className="px-3.5 py-2 bg-amber-950/60 hover:bg-amber-900 text-amber-200 text-xs font-bold rounded-xl border border-amber-700/50 transition-all cursor-pointer"
+                title="Bloquear pantalla del dueño"
               >
-                Cerrar Sesión Dueño
+                🔒 Bloquear
+              </button>
+              <button
+                onClick={logout}
+                className="px-3.5 py-2 bg-rose-900/60 hover:bg-rose-900 text-rose-200 text-xs font-bold rounded-xl border border-rose-700/50 transition-all cursor-pointer"
+              >
+                Cerrar Sesión
               </button>
             </div>
           </div>
@@ -130,15 +289,15 @@ export default function OwnerMasterPortal() {
             <div className="text-2xl font-black text-emerald-400">
               ₡{stats.ingresosHoy.toLocaleString('es-CR')}
             </div>
-            <div className="text-[11px] text-slate-500 mt-2">Calculado de transacciones operativas</div>
+            <div className="text-[11px] text-slate-500 mt-2">Calculado de transacciones operativas del día</div>
           </div>
 
           <div className="bg-slate-800/80 border border-slate-700/70 p-5 rounded-2xl shadow-md">
             <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">👨‍🍳 Órdenes Cocina KDS</div>
             <div className="text-2xl font-black text-amber-400">
-              {stats.totalComandasActivas} en preparación
+              {stats.totalComandasActivas} pendientes
             </div>
-            <div className="text-[11px] text-slate-500 mt-2">Monitoreo en tiempo real</div>
+            <div className="text-[11px] text-slate-500 mt-2">En preparación activa en cocina</div>
           </div>
 
           <div className="bg-slate-800/80 border border-slate-700/70 p-5 rounded-2xl shadow-md">
@@ -264,7 +423,7 @@ export default function OwnerMasterPortal() {
           </div>
         </section>
 
-        {/* Control de Credenciales de Personal */}
+        {/* Control de Credenciales de Personal con Enmascaramiento de Seguridad */}
         <section className="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-slate-700/60">
             <div>
@@ -273,12 +432,22 @@ export default function OwnerMasterPortal() {
                 <span>PINs y Credenciales de Cajeros Autorizados</span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Los cajeros únicamente ingresan con su PIN a la estación POS sin poder acceder a otros módulos.
+                Los cajeros únicamente ingresan con su PIN a la estación POS. Enmascarados por defecto para prevenir miradas indiscretas.
               </p>
             </div>
-            <span className="text-xs font-mono bg-slate-900 text-slate-300 px-3 py-1 rounded-full border border-slate-700">
-              {empleados.length} Registrados
-            </span>
+            <div className="flex items-center gap-3">
+              {empleados.length > 0 && (
+                <button
+                  onClick={toggleAllPins}
+                  className="text-xs font-semibold px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-all cursor-pointer"
+                >
+                  {showAllPins ? '🙈 Ocultar Todos' : '👁️ Revelar Todos'}
+                </button>
+              )}
+              <span className="text-xs font-mono bg-slate-900 text-slate-300 px-3 py-1 rounded-full border border-slate-700">
+                {empleados.length} Registrados
+              </span>
+            </div>
           </div>
 
           {isLoading ? (
@@ -289,17 +458,29 @@ export default function OwnerMasterPortal() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {empleados.map(emp => (
-                <div key={emp.id} className="bg-slate-900/60 border border-slate-700/70 p-3.5 rounded-xl flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-slate-200 text-xs">{emp.nombre}</div>
-                    <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Cajero POS</div>
+              {empleados.map(emp => {
+                const isRevealed = revealedPins.has(emp.id);
+                return (
+                  <div key={emp.id} className="bg-slate-900/60 border border-slate-700/70 p-3.5 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-200 text-xs">{emp.nombre}</div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Cajero POS</div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="bg-violet-950 border border-violet-800/60 text-violet-300 font-mono font-bold text-xs px-2.5 py-1 rounded-lg tracking-widest shadow-sm">
+                        {isRevealed ? emp.pin : '•••••'}
+                      </div>
+                      <button
+                        onClick={() => togglePinVisibility(emp.id)}
+                        className="p-1 text-slate-400 hover:text-white transition-colors text-xs cursor-pointer"
+                        title={isRevealed ? 'Ocultar PIN' : 'Ver PIN'}
+                      >
+                        {isRevealed ? '🙈' : '👁️'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="bg-violet-950 border border-violet-800/60 text-violet-300 font-mono font-bold text-xs px-2.5 py-1 rounded-lg tracking-widest shadow-sm">
-                    {emp.pin}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -308,3 +489,4 @@ export default function OwnerMasterPortal() {
     </div>
   );
 }
+

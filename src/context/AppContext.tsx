@@ -52,7 +52,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from('menu_items')
       .select('id, nombre, precio')
-      .eq('negocio_id', negocioId);
+      .eq('negocio_id', negocioId)
+      .order('nombre');
     
     if (error) {
       console.error('Error fetching menu:', error);
@@ -68,10 +69,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (ownerId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchMenu(ownerId);
+    if (!ownerId) {
+      setMenu([]);
+      return;
     }
+
+    fetchMenu(ownerId);
+
+    // Sincronización en tiempo real con Supabase Realtime para POS y Administrador
+    const menuChannel = supabase
+      .channel(`menu_items_realtime_${ownerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'menu_items',
+          filter: `negocio_id=eq.${ownerId}`,
+        },
+        () => {
+          fetchMenu(ownerId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(menuChannel);
+    };
   }, [ownerId]);
 
   const login = async (email: string, password: string, isSignUp: boolean, restaurantName?: string) => {
@@ -122,6 +146,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('fw_last_activity_timestamp');
+        sessionStorage.removeItem('fw_owner_authenticated');
+      }
+    } catch {}
     await supabase.auth.signOut();
     setOwnerId(null);
     setMenu([]);
@@ -129,9 +159,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addDish = async (dish: Omit<Dish, 'id'>) => {
     if (!ownerId) return;
+    const cleanName = dish.name?.trim();
+    if (!cleanName) {
+      alert('El nombre del platillo no puede estar vacío.');
+      return;
+    }
+    const cleanPrice = Number(dish.price);
+    if (isNaN(cleanPrice) || cleanPrice < 0) {
+      alert('El precio debe ser un número válido mayor o igual a 0.');
+      return;
+    }
+
     const { data, error } = await supabase
       .from('menu_items')
-      .insert({ nombre: dish.name, precio: dish.price, negocio_id: ownerId })
+      .insert({ nombre: cleanName, precio: cleanPrice, negocio_id: ownerId })
       .select()
       .single();
     
@@ -139,15 +180,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.error('Error adding dish:', error);
       alert('Error guardando platillo en BD: ' + error.message);
     } else if (data) {
-      setMenu([...menu, { id: data.id, name: data.nombre, price: data.precio }]);
+      setMenu(prev => [...prev, { id: data.id, name: data.nombre, price: data.precio }].sort((a, b) => a.name.localeCompare(b.name)));
     }
   };
 
   const updateDish = async (id: string, updatedDish: Omit<Dish, 'id'>) => {
     if (!ownerId) return;
+    const cleanName = updatedDish.name?.trim();
+    if (!cleanName) {
+      alert('El nombre del platillo no puede estar vacío.');
+      return;
+    }
+    const cleanPrice = Number(updatedDish.price);
+    if (isNaN(cleanPrice) || cleanPrice < 0) {
+      alert('El precio debe ser un número válido mayor o igual a 0.');
+      return;
+    }
+
     const { error } = await supabase
       .from('menu_items')
-      .update({ nombre: updatedDish.name, precio: updatedDish.price })
+      .update({ nombre: cleanName, precio: cleanPrice })
       .eq('id', id)
       .eq('negocio_id', ownerId);
 
@@ -155,12 +207,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.error('Error updating dish:', error);
       alert('Error actualizando platillo: ' + error.message);
     } else {
-      setMenu(menu.map((d) => (d.id === id ? { ...d, ...updatedDish } : d)));
+      setMenu(prev => prev.map((d) => (d.id === id ? { ...d, name: cleanName, price: cleanPrice } : d)).sort((a, b) => a.name.localeCompare(b.name)));
     }
   };
 
   const deleteDish = async (id: string) => {
     if (!ownerId) return;
+    // Eliminación segura: eliminar recetas asociadas primero para no romper restricciones de llave foránea
+    try {
+      await supabase.from('recetas').delete().eq('menu_item_id', id);
+    } catch (recipeErr) {
+      console.warn('Advertencia al limpiar recetas asociadas:', recipeErr);
+    }
+
     const { error } = await supabase
       .from('menu_items')
       .delete()
@@ -171,7 +230,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.error('Error deleting dish:', error);
       alert('Error eliminando platillo: ' + error.message);
     } else {
-      setMenu(menu.filter((d) => d.id !== id));
+      setMenu(prev => prev.filter((d) => d.id !== id));
     }
   };
 
@@ -179,10 +238,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!ownerId) return;
     const tipo = amount >= 0 ? 'Ingreso' : 'Gasto';
     const categoria = 'Restaurante'; 
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayLocalStr = `${year}-${month}-${day}`;
+
     const { error } = await supabase
       .from('finanzas_registros')
       .insert({ 
          negocio_id: ownerId, 
+         fecha: todayLocalStr,
          monto: Math.abs(amount), 
          descripcion: description,
          tipo: tipo,

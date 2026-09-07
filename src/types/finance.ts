@@ -4,6 +4,7 @@ export interface Transaction {
   descripcion: string;
   tipo: 'Ingreso' | 'Gasto';
   monto: number;
+  categoria?: string;
   fecha?: string;
   created_at?: string;
 }

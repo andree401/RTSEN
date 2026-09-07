@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Transaction } from '../types/finance';
 
 interface FinancialStatsProps {
@@ -6,16 +6,33 @@ interface FinancialStatsProps {
 }
 
 export default function FinancialStats({ transactions }: FinancialStatsProps) {
-  const ingresosTotales = transactions
-    .filter(t => t.tipo === 'Ingreso')
-    .reduce((acc, t) => acc + (Number(t.monto) || 0), 0);
-  const gastosTotales = transactions
-    .filter(t => t.tipo === 'Gasto')
-    .reduce((acc, t) => acc + (Number(t.monto) || 0), 0);
-  const balance = ingresosTotales - gastosTotales;
+  const safeTransactions = useMemo(() => {
+    return Array.isArray(transactions) ? transactions : [];
+  }, [transactions]);
 
-  const formatColones = (num: number) => {
-    return `₡${num.toLocaleString('es-CR')}`;
+  const parseMonto = (monto: unknown): number => {
+    const parsed = Number(monto);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const { ingresosTotales, gastosTotales, balance } = useMemo(() => {
+    const ingresos = safeTransactions
+      .filter(t => t && t.tipo === 'Ingreso')
+      .reduce((acc, t) => acc + parseMonto(t.monto), 0);
+    const gastos = safeTransactions
+      .filter(t => t && t.tipo === 'Gasto')
+      .reduce((acc, t) => acc + parseMonto(t.monto), 0);
+    return {
+      ingresosTotales: ingresos,
+      gastosTotales: gastos,
+      balance: ingresos - gastos,
+    };
+  }, [safeTransactions]);
+
+  const formatColones = (num: unknown) => {
+    const parsed = Number(num);
+    const safe = Number.isFinite(parsed) ? parsed : 0;
+    return `₡${safe.toLocaleString('es-CR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
   };
 
   return (

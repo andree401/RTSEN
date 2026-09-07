@@ -49,6 +49,13 @@ export function playOrderBell() {
       osc.connect(gain);
       gain.connect(ctx.destination);
 
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          gain.disconnect();
+        } catch {}
+      };
+
       osc.start(start);
       osc.stop(start + duration + 0.05);
     };
@@ -84,6 +91,12 @@ export function playCashRegisterSound() {
     clickGain.gain.linearRampToValueAtTime(0.001, now + 0.08);
     clickOsc.connect(clickGain);
     clickGain.connect(ctx.destination);
+    clickOsc.onended = () => {
+      try {
+        clickOsc.disconnect();
+        clickGain.disconnect();
+      } catch {}
+    };
     clickOsc.start(now);
     clickOsc.stop(now + 0.1);
 
@@ -97,6 +110,12 @@ export function playCashRegisterSound() {
       gain.gain.linearRampToValueAtTime(0.0001, start + duration);
       osc.connect(gain);
       gain.connect(ctx.destination);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          gain.disconnect();
+        } catch {}
+      };
       osc.start(start);
       osc.stop(start + duration + 0.05);
     };
@@ -134,6 +153,12 @@ export function playOrderReadySound() {
       gain.gain.linearRampToValueAtTime(0.001, start + 0.18);
       osc.connect(gain);
       gain.connect(ctx.destination);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          gain.disconnect();
+        } catch {}
+      };
       osc.start(start);
       osc.stop(start + 0.2);
     };
@@ -148,6 +173,12 @@ export function playOrderReadySound() {
       gain.gain.linearRampToValueAtTime(0.0001, start + duration);
       osc.connect(gain);
       gain.connect(ctx.destination);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          gain.disconnect();
+        } catch {}
+      };
       osc.start(start);
       osc.stop(start + duration + 0.05);
     };

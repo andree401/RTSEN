@@ -84,25 +84,27 @@ export default function ClientHeader() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Botón de acceso exclusivo al Portal del Dueño */}
-          <Link
-            href="/owner"
-            className={`text-xs font-black px-3.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 shadow-sm ${
-              isOwnerMode
-                ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/20'
-                : 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 hover:border-violet-300'
-            }`}
-            title="Portal Maestro del Propietario"
-          >
-            <span>👑</span>
-            <span className="hidden sm:inline">Portal Dueño</span>
-          </Link>
+          {/* Botón de acceso exclusivo al Portal del Dueño: NUNCA visible en estaciones operativas aisladas */}
+          {!isTerminalMode && (
+            <Link
+              href="/owner"
+              className={`text-xs font-black px-3.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 shadow-sm ${
+                isOwnerMode
+                  ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/20'
+                  : 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 hover:border-violet-300'
+              }`}
+              title="Portal Maestro del Propietario"
+            >
+              <span>👑</span>
+              <span className="hidden sm:inline">Portal Dueño</span>
+            </Link>
+          )}
 
           <button 
             onClick={handleLogout} 
             className="text-xs font-semibold bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 px-3.5 py-1.5 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
           >
-            Salir
+            {isTerminalMode ? 'Cerrar Estación' : 'Salir'}
           </button>
         </div>
       </div>

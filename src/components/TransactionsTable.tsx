@@ -16,12 +16,33 @@ export default function TransactionsTable({
   onEdit,
   onDelete
 }: TransactionsTableProps) {
-  const filteredTransactions = transactions.filter(tx => 
-    tx.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const safeTransactions = React.useMemo(() => {
+    return Array.isArray(transactions) ? transactions : [];
+  }, [transactions]);
 
-  const formatColones = (num: number) => {
-    return `₡${Number(num).toLocaleString('es-CR')}`;
+  const filteredTransactions = React.useMemo(() => {
+    const term = (searchTerm || '').trim().toLowerCase();
+    if (!term) return safeTransactions;
+    return safeTransactions.filter(tx => 
+      Boolean(
+        (tx?.descripcion && tx.descripcion.toLowerCase().includes(term)) ||
+        (tx?.categoria && tx.categoria.toLowerCase().includes(term)) ||
+        (tx?.tipo && tx.tipo.toLowerCase().includes(term))
+      )
+    );
+  }, [safeTransactions, searchTerm]);
+
+  const formatColones = (num: unknown) => {
+    const parsed = Number(num);
+    const safe = Number.isFinite(parsed) ? parsed : 0;
+    return `₡${safe.toLocaleString('es-CR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  };
+
+  const formatDate = (tx: Transaction) => {
+    const rawDate = tx.fecha || tx.created_at;
+    if (!rawDate) return 'N/A';
+    const d = new Date(rawDate);
+    return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('es-CR');
   };
 
   return (
@@ -66,9 +87,9 @@ export default function TransactionsTable({
               filteredTransactions.map((tx) => (
                 <tr key={tx.id} className="hover:bg-indigo-50/30 transition-colors">
                   <td className="p-4 text-slate-600 font-medium whitespace-nowrap">
-                    {tx.fecha ? new Date(tx.fecha).toLocaleDateString('es-CR') : (tx.created_at ? new Date(tx.created_at).toLocaleDateString('es-CR') : 'N/A')}
+                    {formatDate(tx)}
                   </td>
-                  <td className="p-4 font-semibold text-slate-800">{tx.descripcion}</td>
+                  <td className="p-4 font-semibold text-slate-800">{tx.descripcion || 'Sin descripción'}</td>
                   <td className="p-4 whitespace-nowrap">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${
                       tx.tipo === 'Ingreso' 

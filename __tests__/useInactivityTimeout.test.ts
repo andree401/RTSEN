@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useInactivityTimeout } from '../src/hooks/useInactivityTimeout';
 
-describe('useInactivityTimeout', () => {
+describe('useInactivityTimeout - Lifecycle & Edge Cases', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     localStorage.clear();
@@ -22,6 +22,25 @@ describe('useInactivityTimeout', () => {
         onTimeout: mockTimeout,
       })
     );
+
+    expect(result.current.isWarningOpen).toBe(false);
+    expect(mockTimeout).not.toHaveBeenCalled();
+  });
+
+  test('no debe activar timers ni timeout si enabled es false', () => {
+    const mockTimeout = vi.fn();
+    const { result } = renderHook(() =>
+      useInactivityTimeout({
+        timeoutMs: 10000,
+        warningMs: 3000,
+        enabled: false,
+        onTimeout: mockTimeout,
+      })
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(20000);
+    });
 
     expect(result.current.isWarningOpen).toBe(false);
     expect(mockTimeout).not.toHaveBeenCalled();
@@ -92,5 +111,68 @@ describe('useInactivityTimeout', () => {
 
     expect(result.current.isWarningOpen).toBe(false);
     expect(mockTimeout).not.toHaveBeenCalled();
+  });
+
+  test('debe reiniciar la inactividad ante eventos de usuario en la ventana (mousemove / keydown)', () => {
+    const mockTimeout = vi.fn();
+    const { result } = renderHook(() =>
+      useInactivityTimeout({
+        timeoutMs: 10000,
+        warningMs: 3000,
+        enabled: true,
+        onTimeout: mockTimeout,
+      })
+    );
+
+    // Avanzar 5 segundos
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    // Simular que el usuario mueve el ratón o teclea
+    act(() => {
+      window.dispatchEvent(new Event('mousemove'));
+      vi.advanceTimersByTime(1500); // Superar throttle de 1s
+      window.dispatchEvent(new Event('keydown'));
+    });
+
+    // Avanzar otros 4 segundos (total desde inicio: 10.5s, pero reseteado en 6.5s -> sólo han pasado 4s)
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(result.current.isWarningOpen).toBe(false);
+    expect(mockTimeout).not.toHaveBeenCalled();
+  });
+
+  test('debe sincronizar actividad remota vía storage event (multitestaña)', () => {
+    const mockTimeout = vi.fn();
+    const { result } = renderHook(() =>
+      useInactivityTimeout({
+        timeoutMs: 10000,
+        warningMs: 3000,
+        enabled: true,
+        onTimeout: mockTimeout,
+      })
+    );
+
+    // Entrar en zona de advertencia a los 8s
+    act(() => {
+      vi.advanceTimersByTime(8000);
+    });
+    expect(result.current.isWarningOpen).toBe(true);
+
+    // Otra pestaña registra actividad
+    const newActivityTimestamp = (Date.now() + 100).toString();
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'fw_last_activity_timestamp',
+          newValue: newActivityTimestamp,
+        })
+      );
+    });
+
+    expect(result.current.isWarningOpen).toBe(false);
   });
 });
