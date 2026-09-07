@@ -94,7 +94,7 @@ export default function InventarioPanel() {
   };
 
   const saveEdit = async () => {
-    if (!ownerId || !editingId || !editCantidad) return;
+    if (!ownerId || !editingId || editCantidad.trim() === '') return;
 
     const cantidad = Number(editCantidad);
     if (isNaN(cantidad) || cantidad < 0) {

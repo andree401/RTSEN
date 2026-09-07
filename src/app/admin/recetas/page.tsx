@@ -39,7 +39,7 @@ type IngredientRow = {
 };
 
 export default function RecetasPanel() {
-  const { ownerId } = useAppContext();
+  const { ownerId, refreshMenu } = useAppContext();
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [inventarioItems, setInventarioItems] = useState<InventarioItem[]>([]);
@@ -246,6 +246,9 @@ export default function RecetasPanel() {
         setRecetas(prev => [...prev, ...((insertedData as unknown) as Receta[])]);
       }
       await fetchData();
+      if (refreshMenu) {
+        await refreshMenu();
+      }
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Error al guardar receta:', error);

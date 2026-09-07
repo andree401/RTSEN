@@ -29,7 +29,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [menu, setMenu] = useState<Dish[]>([]);
-  const [isLoaded, setIsLoaded] = useState(true);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     // Check initial session

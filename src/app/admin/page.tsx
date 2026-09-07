@@ -28,8 +28,8 @@ export default function AdminPanel() {
   };
 
   const saveEdit = () => {
-    if (editingId && editName && editPrice) {
-      updateDish(editingId, { name: editName, price: Number(editPrice) });
+    if (editingId && editName.trim() && editPrice.trim() !== '') {
+      updateDish(editingId, { name: editName.trim(), price: Number(editPrice) });
       setEditingId(null);
     }
   };

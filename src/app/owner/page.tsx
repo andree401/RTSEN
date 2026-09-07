@@ -47,10 +47,10 @@ export default function OwnerMasterPortal() {
         // 4. Finanzas del día (ingresos)
         const todayStr = new Date().toISOString().split('T')[0];
         const { data: transData } = await supabase
-          .from('transacciones')
-          .select('monto, tipo, fecha')
+          .from('finanzas_registros')
+          .select('monto, tipo, fecha, created_at')
           .eq('negocio_id', ownerId)
-          .gte('fecha', todayStr);
+          .or(`fecha.gte.${todayStr},created_at.gte.${todayStr}`);
 
         let ingresosDia = 0;
         if (transData) {
