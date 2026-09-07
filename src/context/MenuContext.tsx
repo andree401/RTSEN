@@ -32,12 +32,16 @@ export function MenuProvider({ children }: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const savedMenu = localStorage.getItem('finanzas_menu');
-    if (savedMenu) {
-      setMenu(JSON.parse(savedMenu));
-    } else {
+    try {
+      const savedMenu = localStorage.getItem('finanzas_menu');
+      if (savedMenu) {
+        setMenu(JSON.parse(savedMenu));
+      } else {
+        setMenu(DEFAULT_MENU);
+        localStorage.setItem('finanzas_menu', JSON.stringify(DEFAULT_MENU));
+      }
+    } catch {
       setMenu(DEFAULT_MENU);
-      localStorage.setItem('finanzas_menu', JSON.stringify(DEFAULT_MENU));
     }
     setIsLoaded(true);
   }, []);

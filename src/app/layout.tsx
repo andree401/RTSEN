@@ -1,10 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import ClientHeader from "@/components/ClientHeader";
 import ContextualFooter from "@/components/ContextualFooter";
 import ReleaseNotes from "@/components/ReleaseNotes";
+import PwaRegister from "@/components/PwaRegister";
+import SubscriptionGuardModal from "@/components/SubscriptionGuardModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,9 +18,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#4f46e5",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export const metadata: Metadata = {
   title: "RTSEN - ERP para Restaurantes",
   description: "Plataforma de gestión financiera y operativa para restaurantes",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "RTSEN ERP",
+  },
+  icons: {
+    icon: "/icons/icon.svg",
+    apple: "/icons/icon-192x192.svg",
+  },
 };
 
 export default function RootLayout({
@@ -39,6 +58,8 @@ export default function RootLayout({
           </main>
           <ContextualFooter />
           <ReleaseNotes />
+          <PwaRegister />
+          <SubscriptionGuardModal />
         </AppProvider>
       </body>
     </html>

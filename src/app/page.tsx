@@ -11,8 +11,10 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import AIChat from '../components/AIChat';
 
+import Link from 'next/link';
+
 export default function Dashboard() {
-  const { ownerId } = useAppContext();
+  const { ownerId, activeRole } = useAppContext();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -54,7 +56,7 @@ export default function Dashboard() {
   const handleDelete = async (id: number) => {
     try {
       await FinanceService.deleteTransaction(id);
-      setTransactions(transactions.filter(tx => tx.id !== id));
+      setTransactions(prev => prev.filter(tx => tx.id !== id));
     } catch (error) {
       console.error(error);
     }
@@ -74,11 +76,22 @@ export default function Dashboard() {
 
   const handleSaveEdit = async () => {
     if (!editingTx) return;
+    const desc = (editFormData.descripcion || '').trim();
+    if (!desc) {
+      alert('La descripción no puede estar vacía.');
+      return;
+    }
+    const monto = parseMonto(editFormData.monto);
+    if (monto <= 0) {
+      alert('El monto debe ser un número positivo.');
+      return;
+    }
+
     try {
       const updated = await FinanceService.updateTransaction(editingTx.id, {
-        descripcion: editFormData.descripcion,
+        descripcion: desc,
         tipo: editFormData.tipo as 'Ingreso' | 'Gasto',
-        monto: editFormData.monto
+        monto: monto
       });
       setTransactions(transactions.map(tx => tx.id === editingTx.id ? updated : tx));
       setEditingTx(null);
@@ -92,53 +105,138 @@ export default function Dashboard() {
     setEditingTx(null);
   };
 
+  const parseMonto = (m: unknown): number => {
+    const val = Number(m);
+    return Number.isFinite(val) ? val : 0;
+  };
+
   const getFilteredTransactions = () => {
+    const term = (searchTerm || '').trim().toLowerCase();
+    if (!term) return transactions;
     return transactions.filter(tx => 
-      tx.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
+      Boolean(
+        (tx?.descripcion && tx.descripcion.toLowerCase().includes(term)) ||
+        (tx?.categoria && tx.categoria.toLowerCase().includes(term)) ||
+        (tx?.tipo && tx.tipo.toLowerCase().includes(term))
+      )
     );
   };
 
   const formatDate = (tx: Transaction) => {
-    return tx.fecha ? new Date(tx.fecha).toLocaleDateString() : (tx.created_at ? new Date(tx.created_at).toLocaleDateString() : 'N/A');
+    const rawDate = tx.fecha || tx.created_at;
+    if (!rawDate) return 'N/A';
+    const d = new Date(rawDate);
+    return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('es-CR');
   };
 
   const handleExportCSV = () => {
     const filtered = getFilteredTransactions();
+    if (filtered.length === 0) {
+      alert('No hay transacciones disponibles para exportar.');
+      return;
+    }
+
     const exportData = filtered.map(tx => ({
       ID: tx.id,
       Fecha: formatDate(tx),
-      Descripción: tx.descripcion,
+      Descripción: tx.descripcion || 'Sin descripción',
+      Categoría: tx.categoria || 'General',
       Tipo: tx.tipo,
-      Monto: Number(tx.monto).toFixed(2)
+      'Monto (CRC)': parseMonto(tx.monto)
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Transacciones');
     
-    XLSX.writeFile(workbook, 'transacciones.xlsx');
+    XLSX.writeFile(workbook, `transacciones_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Reporte de Transacciones', 14, 15);
-    
     const filtered = getFilteredTransactions();
+    if (filtered.length === 0) {
+      alert('No hay transacciones disponibles para exportar.');
+      return;
+    }
+
+    const doc = new jsPDF();
+    
+    // Encabezado profesional
+    doc.setFontSize(18);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Reporte Financiero y Contable', 14, 18);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-CR')} ${new Date().toLocaleTimeString('es-CR')}`, 14, 25);
+
+    // Resumen de Totales
+    const totalIngresos = filtered
+      .filter(t => t.tipo === 'Ingreso')
+      .reduce((acc, t) => acc + parseMonto(t.monto), 0);
+    const totalGastos = filtered
+      .filter(t => t.tipo === 'Gasto')
+      .reduce((acc, t) => acc + parseMonto(t.monto), 0);
+    const balance = totalIngresos - totalGastos;
+
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text(`Ingresos: CRC ${totalIngresos.toLocaleString('es-CR', { minimumFractionDigits: 2 })}   |   Gastos: CRC ${totalGastos.toLocaleString('es-CR', { minimumFractionDigits: 2 })}   |   Balance: CRC ${balance.toLocaleString('es-CR', { minimumFractionDigits: 2 })}`, 14, 32);
+
+    // Evitar el símbolo ₡ (U+20A1) en jsPDF estándar porque corrompe caracteres en fuentes Latin-1
     const tableData = filtered.map(tx => [
       formatDate(tx),
-      tx.descripcion,
+      tx.descripcion || 'Sin descripción',
+      tx.categoria || 'General',
       tx.tipo,
-      `₡${Number(tx.monto).toLocaleString('es-CR')}`
+      `CRC ${parseMonto(tx.monto).toLocaleString('es-CR', { minimumFractionDigits: 2 })}`
     ]);
 
     autoTable(doc, {
-      startY: 20,
-      head: [['Fecha', 'Descripción', 'Tipo', 'Monto']],
+      startY: 37,
+      head: [['Fecha', 'Descripción', 'Categoría', 'Tipo', 'Monto']],
       body: tableData,
+      headStyles: { fillColor: [79, 70, 229], fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 3 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
-    doc.save('transacciones.pdf');
+    doc.save(`reporte_financiero_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
+
+  // Protección de Privacidad Financiera Zero-Trust
+  if (activeRole === 'cajero' || activeRole === 'cocina' || activeRole === 'admin') {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full text-center shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 text-3xl flex items-center justify-center mx-auto mb-4 border border-amber-200">
+            🔒
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-1">Área Financiera Exclusiva</h2>
+          <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+            Tu perfil actual ({activeRole.toUpperCase()}) está configurado para operaciones de estación. El balance neto y los ingresos son de acceso exclusivo para el Propietario.
+          </p>
+          <div className="flex flex-col gap-2">
+            {activeRole === 'cajero' && (
+              <Link href="/restaurante" className="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20">
+                Ir al Punto de Venta (POS) ➔
+              </Link>
+            )}
+            {activeRole === 'cocina' && (
+              <Link href="/cocina" className="py-2.5 px-4 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-orange-600/20">
+                Ir a Cocina KDS ➔
+              </Link>
+            )}
+            {activeRole === 'admin' && (
+              <Link href="/admin" className="py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-rose-600/20">
+                Ir a Panel de Menú y Recetas ➔
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-sky-50/30 text-slate-800 p-6 md:p-10 relative overflow-hidden">

@@ -27,7 +27,7 @@ export function useInactivityTimeout({
   const [isWarningOpen, setIsWarningOpen] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(Math.ceil(warningMs / 1000));
 
-  const lastActivityRef = useRef<number>(Date.now());
+  const lastActivityRef = useRef<number>(0);
   const lastThrottleRef = useRef<number>(0);
   const hasTimedOutRef = useRef<boolean>(false);
   const onTimeoutRef = useRef(onTimeout);
@@ -41,7 +41,7 @@ export function useInactivityTimeout({
     const now = Date.now();
     lastActivityRef.current = now;
     hasTimedOutRef.current = false;
-    setIsWarningOpen(false);
+    setIsWarningOpen((prev) => (prev ? false : prev));
 
     try {
       if (typeof window !== 'undefined') {
@@ -59,11 +59,33 @@ export function useInactivityTimeout({
 
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') {
-      setIsWarningOpen(false);
       return;
     }
 
-    recordActivity();
+    const now = Date.now();
+    let initialTimestamp = now;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed <= now) {
+          // Preservar la última actividad real para no burlar los 15 minutos en recargas/navegación
+          initialTimestamp = parsed;
+        }
+      }
+      localStorage.setItem(STORAGE_KEY, initialTimestamp.toString());
+    } catch {}
+
+    lastActivityRef.current = initialTimestamp;
+    hasTimedOutRef.current = false;
+
+    // Si ya había expirado el tiempo de inactividad mientras estaba fuera, forzar logout inmediato
+    if (now - initialTimestamp >= timeoutMs) {
+      hasTimedOutRef.current = true;
+      setIsWarningOpen(false);
+      onTimeoutRef.current();
+      return;
+    }
 
     const handleUserActivity = () => {
       const now = Date.now();

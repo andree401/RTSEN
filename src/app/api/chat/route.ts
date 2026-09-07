@@ -29,13 +29,25 @@ export async function POST(req: Request) {
       contents.push({ role: 'user', parts: [{ text: 'Analiza mis finanzas.' }] });
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents,
-      config: {
-        systemInstruction,
-      }
-    });
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents,
+        config: {
+          systemInstruction,
+        }
+      });
+    } catch {
+      // Fallback a Gemini 3.7 Flash si 3.8 no responde
+      response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents,
+        config: {
+          systemInstruction,
+        }
+      });
+    }
 
     return NextResponse.json({
       role: 'assistant',

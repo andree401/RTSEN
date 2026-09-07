@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="rtsenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="50%" stop-color="#7c3aed" />
+      <stop offset="100%" stop-color="#ec4899" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#rtsenGrad)" />
+  <circle cx="256" cy="256" r="170" fill="#0f172a" opacity="0.2" />
+  <g fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M160 350 L160 162 L256 162 C295 162 320 185 320 220 C320 255 295 278 256 278 L160 278" />
+    <path d="M240 278 L330 350" />
+  </g>
+  <circle cx="370" cy="160" r="20" fill="#38bdf8" />
+</svg>

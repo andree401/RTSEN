@@ -7,15 +7,15 @@ import { usePathname } from 'next/navigation';
 export default function ContextualFooter() {
   const pathname = usePathname();
 
-  // Determinar el enlace de documentación según la ruta actual
+  const currentPath = pathname || '';
   let docLink = '/docs';
-  if (pathname.startsWith('/admin')) {
+  if (currentPath.startsWith('/admin')) {
     docLink = '/docs/admin';
-  } else if (pathname.startsWith('/cocina')) {
+  } else if (currentPath.startsWith('/cocina')) {
     docLink = '/docs/cocina';
-  } else if (pathname.startsWith('/restaurante')) {
+  } else if (currentPath.startsWith('/restaurante')) {
     docLink = '/docs/restaurante';
-  } else if (pathname.startsWith('/configuracion')) {
+  } else if (currentPath.startsWith('/configuracion')) {
     docLink = '/docs/configuracion';
   }
 

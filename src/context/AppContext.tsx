@@ -1,9 +1,11 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { supabase } from '../lib/supabaseClient';
 import { useInactivityTimeout } from '../hooks/useInactivityTimeout';
 import SessionWarningModal from '../components/SessionWarningModal';
+import LoginPage from '../app/login/page';
 
 export type Dish = {
   id: string;
@@ -11,9 +13,24 @@ export type Dish = {
   price: number;
 };
 
+export type UserRole = 'owner' | 'admin' | 'cajero' | 'cocina' | null;
+
+export type EmployeeSession = {
+  id: string;
+  nombre: string;
+  pin: string;
+  negocio_id: string;
+  rol: 'cajero' | 'admin' | 'cocina';
+  restaurante?: string;
+};
+
 type AppContextType = {
   ownerId: string | null;
+  activeRole: UserRole;
+  currentEmployee: EmployeeSession | null;
   login: (email: string, password: string, isSignUp: boolean, restaurantName?: string) => Promise<void>;
+  loginWithPin: (pin: string, expectedRole?: string) => Promise<EmployeeSession>;
+  setStationSession: (employee: EmployeeSession) => void;
   logout: () => Promise<void>;
   
   menu: Dish[];
@@ -28,21 +45,45 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [activeRole, setActiveRole] = useState<UserRole>(null);
+  const [currentEmployee, setCurrentEmployee] = useState<EmployeeSession | null>(null);
   const [menu, setMenu] = useState<Dish[]>([]);
-  const [isLoaded, setIsLoaded] = useState(true);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Check initial session
+    // Restaurar sesión de empleado de estación si existe
+    try {
+      const savedEmp = sessionStorage.getItem('fw_station_employee');
+      if (savedEmp) {
+        const parsed = JSON.parse(savedEmp);
+        if (parsed?.negocio_id) {
+          setCurrentEmployee(parsed);
+          setActiveRole(parsed.rol || 'cajero');
+          setOwnerId(prev => prev || parsed.negocio_id);
+        }
+      }
+    } catch {}
+
+    // Check initial session de Supabase (Dueño)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
+      const hasStationEmployee = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('fw_station_employee'));
+      if (session?.user && !hasStationEmployee) {
         setOwnerId(session.user.id);
+        setActiveRole('owner');
       }
       setIsLoaded(true);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setOwnerId(session?.user?.id || null);
+      const hasStationEmployee = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('fw_station_employee'));
+      if (session?.user?.id && !hasStationEmployee) {
+        setOwnerId(session.user.id);
+        setActiveRole('owner');
+      } else if (!hasStationEmployee) {
+        setOwnerId(null);
+        setActiveRole(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -52,7 +93,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from('menu_items')
       .select('id, nombre, precio')
-      .eq('negocio_id', negocioId);
+      .eq('negocio_id', negocioId)
+      .order('nombre');
     
     if (error) {
       console.error('Error fetching menu:', error);
@@ -68,10 +110,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (ownerId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchMenu(ownerId);
+    if (!ownerId) {
+      setMenu([]);
+      return;
     }
+
+    fetchMenu(ownerId);
+
+    // Sincronización en tiempo real con Supabase Realtime para POS y Administrador
+    const menuChannel = supabase
+      .channel(`menu_items_realtime_${ownerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'menu_items',
+          filter: `negocio_id=eq.${ownerId}`,
+        },
+        () => {
+          fetchMenu(ownerId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(menuChannel);
+    };
   }, [ownerId]);
 
   const login = async (email: string, password: string, isSignUp: boolean, restaurantName?: string) => {
@@ -121,46 +186,127 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithPin = async (pin: string, expectedRole?: string): Promise<EmployeeSession> => {
+    const res = await fetch('/api/auth/pin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin, role: expectedRole })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'PIN incorrecto o no autorizado');
+    }
+
+    const employee: EmployeeSession = data.employee;
+    setStationSession(employee);
+    return employee;
+  };
+
+  const setStationSession = (employee: EmployeeSession) => {
+    setCurrentEmployee(employee);
+    setActiveRole(employee.rol || 'cajero');
+    setOwnerId(employee.negocio_id);
+    try {
+      sessionStorage.setItem('fw_station_employee', JSON.stringify(employee));
+    } catch {}
+  };
+
   const logout = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('fw_last_activity_timestamp');
+        sessionStorage.removeItem('fw_owner_authenticated');
+        sessionStorage.removeItem('fw_station_employee');
+        sessionStorage.removeItem('pos_cashier_session');
+      }
+    } catch {}
     await supabase.auth.signOut();
     setOwnerId(null);
+    setActiveRole(null);
+    setCurrentEmployee(null);
     setMenu([]);
   };
 
   const addDish = async (dish: Omit<Dish, 'id'>) => {
     if (!ownerId) return;
+    const cleanName = dish.name?.trim();
+    if (!cleanName) {
+      alert('El nombre del platillo no puede estar vacío.');
+      return;
+    }
+    const cleanPrice = Number(dish.price);
+    if (isNaN(cleanPrice) || cleanPrice < 0) {
+      alert('El precio debe ser un número válido mayor o igual a 0.');
+      return;
+    }
+
+    // Actualización Optimista (§2 FASE 5.0): reflejar en UI inmediatamente
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const optimisticDish: Dish = { id: tempId, name: cleanName, price: cleanPrice };
+    setMenu(prev => [...prev, optimisticDish].sort((a, b) => a.name.localeCompare(b.name)));
+
     const { data, error } = await supabase
       .from('menu_items')
-      .insert({ nombre: dish.name, precio: dish.price, negocio_id: ownerId })
+      .insert({ nombre: cleanName, precio: cleanPrice, negocio_id: ownerId })
       .select()
       .single();
     
     if (error) {
       console.error('Error adding dish:', error);
+      // Rollback optimista: remover el elemento temporal que falló
+      setMenu(prev => prev.filter(d => d.id !== tempId));
       alert('Error guardando platillo en BD: ' + error.message);
     } else if (data) {
-      setMenu([...menu, { id: data.id, name: data.nombre, price: data.precio }]);
+      // Reemplazar el ID temporal por el ID persistido en BD
+      setMenu(prev => prev.map(d => (d.id === tempId ? { id: data.id, name: data.nombre, price: data.precio } : d)).sort((a, b) => a.name.localeCompare(b.name)));
     }
   };
 
   const updateDish = async (id: string, updatedDish: Omit<Dish, 'id'>) => {
     if (!ownerId) return;
+    const cleanName = updatedDish.name?.trim();
+    if (!cleanName) {
+      alert('El nombre del platillo no puede estar vacío.');
+      return;
+    }
+    const cleanPrice = Number(updatedDish.price);
+    if (isNaN(cleanPrice) || cleanPrice < 0) {
+      alert('El precio debe ser un número válido mayor o igual a 0.');
+      return;
+    }
+
+    // Actualización Optimista (§2 FASE 5.0): guardar snapshot para rollback y actualizar UI
+    const previousMenu = [...menu];
+    setMenu(prev => prev.map((d) => (d.id === id ? { ...d, name: cleanName, price: cleanPrice } : d)).sort((a, b) => a.name.localeCompare(b.name)));
+
     const { error } = await supabase
       .from('menu_items')
-      .update({ nombre: updatedDish.name, precio: updatedDish.price })
+      .update({ nombre: cleanName, precio: cleanPrice })
       .eq('id', id)
       .eq('negocio_id', ownerId);
 
     if (error) {
       console.error('Error updating dish:', error);
+      // Rollback optimista en caso de error
+      setMenu(previousMenu);
       alert('Error actualizando platillo: ' + error.message);
-    } else {
-      setMenu(menu.map((d) => (d.id === id ? { ...d, ...updatedDish } : d)));
     }
   };
 
   const deleteDish = async (id: string) => {
     if (!ownerId) return;
+    // Actualización Optimista (§2 FASE 5.0): remover inmediatamente de UI con snapshot previo
+    const previousMenu = [...menu];
+    setMenu(prev => prev.filter((d) => d.id !== id));
+
+    // Eliminación segura: eliminar recetas asociadas primero para no romper restricciones de llave foránea
+    try {
+      await supabase.from('recetas').delete().eq('menu_item_id', id);
+    } catch (recipeErr) {
+      console.warn('Advertencia al limpiar recetas asociadas:', recipeErr);
+    }
+
     const { error } = await supabase
       .from('menu_items')
       .delete()
@@ -169,9 +315,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error('Error deleting dish:', error);
+      // Rollback optimista: restaurar el platillo en la lista
+      setMenu(previousMenu);
       alert('Error eliminando platillo: ' + error.message);
-    } else {
-      setMenu(menu.filter((d) => d.id !== id));
     }
   };
 
@@ -179,10 +325,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!ownerId) return;
     const tipo = amount >= 0 ? 'Ingreso' : 'Gasto';
     const categoria = 'Restaurante'; 
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayLocalStr = `${year}-${month}-${day}`;
+
     const { error } = await supabase
       .from('finanzas_registros')
       .insert({ 
          negocio_id: ownerId, 
+         fecha: todayLocalStr,
          monto: Math.abs(amount), 
          descripcion: description,
          tipo: tipo,
@@ -202,109 +355,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     onTimeout: logout,
   });
 
+  const rawPathname = usePathname();
+  const pathname = rawPathname || '';
+  const isSysOps = pathname.startsWith('/sys-ops');
+  const isLoginPage = pathname.startsWith('/login');
+
   if (!isLoaded) return null;
 
-  if (!ownerId) {
-    return <AuthScreen onLogin={login} />;
-  }
-
   return (
-    <AppContext.Provider value={{ ownerId, login, logout, menu, refreshMenu, addDish, updateDish, deleteDish, recordFinance }}>
-      {children}
-      <SessionWarningModal
-        isOpen={isWarningOpen}
-        remainingSeconds={remainingSeconds}
-        onStayLoggedIn={resetTimer}
-        onLogout={logout}
-      />
-    </AppContext.Provider>
-  );
-}
-
-function AuthScreen({ onLogin }: { onLogin: (email: string, pass: string, isSignUp: boolean, name?: string) => Promise<void> }) {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [restaurantName, setRestaurantName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    try {
-      await onLogin(email, password, isSignUp, isSignUp ? restaurantName : undefined);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/30 to-sky-50/40 p-4">
-      <div className="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl shadow-indigo-500/10 border border-slate-200/80 w-full max-w-sm">
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white text-2xl shadow-md shadow-indigo-500/25 mb-3">
-            ⚡
-          </div>
-          <h1 className="text-2xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 tracking-tight">
-            RTSEN ERP
-          </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium text-center">
-            {isSignUp ? 'Crea la cuenta de tu restaurante' : 'Iniciar Sesión en el Sistema'}
-          </p>
-        </div>
-        <div className="flex flex-col gap-3.5">
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Correo Electrónico</label>
-            <input 
-              type="email" 
-              placeholder="tu@restaurante.com" 
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              disabled={isLoading}
-              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all"
+    <AppContext.Provider
+      value={{
+        ownerId,
+        activeRole,
+        currentEmployee,
+        login,
+        loginWithPin,
+        setStationSession,
+        logout,
+        menu,
+        refreshMenu,
+        addDish,
+        updateDish,
+        deleteDish,
+        recordFinance,
+      }}
+    >
+      {!ownerId && !isSysOps && !isLoginPage ? (
+        <LoginPage />
+      ) : (
+        <>
+          {children}
+          {ownerId && (
+            <SessionWarningModal
+              isOpen={isWarningOpen}
+              remainingSeconds={remainingSeconds}
+              onStayLoggedIn={resetTimer}
+              onLogout={logout}
             />
-          </div>
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Contraseña</label>
-            <input 
-              type="password" 
-              placeholder="••••••••" 
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              disabled={isLoading}
-              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all"
-            />
-          </div>
-          {isSignUp && (
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Nombre del Restaurante</label>
-              <input 
-                type="text" 
-                placeholder="Ej. Taquería El Sol" 
-                value={restaurantName} 
-                onChange={e => setRestaurantName(e.target.value)} 
-                disabled={isLoading}
-                className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all"
-              />
-            </div>
           )}
-          <button 
-            onClick={handleSubmit} 
-            disabled={isLoading}
-            className="w-full mt-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:opacity-95 text-white font-bold py-2.5 rounded-xl shadow-md shadow-indigo-600/20 transition-all disabled:opacity-75 disabled:cursor-not-allowed text-sm"
-          >
-            {isLoading ? 'Cargando...' : (isSignUp ? 'Crear Restaurante' : 'Ingresar al Sistema')}
-          </button>
-          
-          <button 
-            onClick={() => setIsSignUp(!isSignUp)}
-            disabled={isLoading}
-            className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline text-center font-medium mt-1 disabled:opacity-50"
-          >
-            {isSignUp ? '¿Ya tienes cuenta? Ingresa aquí' : '¿No tienes cuenta? Regístrate gratis'}
-          </button>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </AppContext.Provider>
   );
 }
 
