@@ -56,6 +56,18 @@ export default function ClientHeader() {
                 Finanzas
               </Link>
               <Link 
+                href="/restaurante" 
+                className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-blue-50/80 transition-all font-semibold"
+              >
+                🍽️ Cajero / POS
+              </Link>
+              <Link 
+                href="/cocina" 
+                className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold tracking-wider text-xs shadow-sm shadow-orange-500/30 hover:shadow-md hover:scale-105 transition-all"
+              >
+                COCINA
+              </Link>
+              <Link 
                 href="/admin" 
                 className="px-3 py-1.5 rounded-lg text-slate-700 hover:text-rose-600 hover:bg-rose-50/80 transition-all"
               >

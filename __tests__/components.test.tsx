@@ -15,6 +15,8 @@ describe('ClientHeader (Dashboard render)', () => {
   it('renders navigation links and owner portal button', () => {
     render(<ClientHeader />);
     expect(screen.getByText('Finanzas')).toBeInTheDocument();
+    expect(screen.getByText('🍽️ Cajero / POS')).toBeInTheDocument();
+    expect(screen.getByText('COCINA')).toBeInTheDocument();
     expect(screen.getByText('Admin')).toBeInTheDocument();
     expect(screen.getByText('Configuración')).toBeInTheDocument();
     expect(screen.getByText('Portal Dueño')).toBeInTheDocument();
