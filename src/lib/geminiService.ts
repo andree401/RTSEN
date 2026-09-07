@@ -84,13 +84,28 @@ export class GeminiService {
     const contextPrompt = `Eres un asesor financiero experto y conciso para un negocio en Costa Rica. Las cifras monetarias son en Colones costarricenses (₡). Datos financieros del usuario (resumen): ${JSON.stringify(contextoCondensado)}. Pregunta del usuario: ${trimmedPrompt}`;
 
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${trimmedKey}`, {
+      // Intentar primero con el nuevo modelo Gemini 3.8 Flash
+      let res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${trimmedKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: contextPrompt }] }]
         })
       });
+
+      // Si no estuviese disponible en la región o endpoint actual, degradar limpiamente a gemini-1.5-flash
+      if (!res.ok && (res.status === 404 || res.status === 400)) {
+        const fallbackRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${trimmedKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: contextPrompt }] }]
+          })
+        });
+        if (fallbackRes.ok) {
+          res = fallbackRes;
+        }
+      }
 
       let data: GeminiResponse;
       try {

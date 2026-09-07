@@ -118,7 +118,7 @@ describe('Cocina KDS (Kitchen Display System)', () => {
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEqEstado });
 
     const mockEqNegocioUpdate = vi.fn().mockResolvedValue({ error: null });
-    const mockEqUpdate = vi.fn().mockReturnValue({ eq: mockEqNegocioUpdate, then: (resolve: any) => resolve({ error: null }) });
+    const mockEqUpdate = vi.fn().mockReturnValue({ eq: mockEqNegocioUpdate, then: (resolve: (val: unknown) => void) => resolve({ error: null }) });
     const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqUpdate });
 
     vi.mocked(supabase.from).mockImplementation((table: string) => {

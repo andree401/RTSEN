@@ -78,7 +78,7 @@ export default function AIChat({ isOpen, onClose, apiKey, transactions }: AIChat
           <div>
             <h3 className="font-bold text-sm leading-tight flex items-center gap-1.5">
               Asistente Financiero IA
-              <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/20 font-mono">1.5 Flash</span>
+              <span className="px-1.5 py-0.2 rounded text-[10px] bg-white/20 font-mono">3.8 Flash</span>
             </h3>
             <span className="text-[10px] text-purple-100 font-medium">Análisis inteligente de tu negocio</span>
           </div>
