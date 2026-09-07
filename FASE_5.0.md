@@ -62,5 +62,16 @@ Este documento detalla las próximas grandes mejoras (Features) a implementar en
   - Alertas acústicas sintetizadas con Web Audio API: campana en Cocina KDS y sonido metálico de caja registradora en Punto de Venta.
   - Centro interactivo de historial de versiones en `ReleaseNotes.tsx` y archivo formal `CHANGELOG.md`.
 
-
-
+## 10. Aislamiento Estricto de Módulos por Rol y Portal Maestro del Dueño (Superadmin) 🔐👑
+- **Objetivo:** Garantizar que los empleados solo tengan acceso a su estación de trabajo correspondiente (Zero Trust operativo) y crear un acceso independiente y exclusivo para el dueño del sistema.
+- **Problema Actual:** Actualmente la barra de navegación superior (`ClientHeader.tsx`) muestra enlaces a todas las secciones (Finanzas, Restaurante/Caja, Cocina, Admin, Configuración) a cualquier usuario autenticado. Un cajero puede hacer clic en "Cocina", "Admin" o ver las finanzas del negocio.
+- **Implementación y Arquitectura:**
+  1. **Aislamiento de Interfaces (Estaciones de Trabajo Autónomas):**
+     - **Módulo Cajero / POS (`/restaurante`):** Vista limpia y focalizada. No tiene acceso ni navegación hacia Cocina KDS, ni Inventario/Recetas, ni Finanzas/Admin. Si intenta navegar por URL a `/admin` o `/cocina`, el sistema lo rebota con un mensaje de permisos insuficientes o solicita PIN de supervisor.
+     - **Módulo Cocina KDS (`/cocina`):** Pantalla completa tipo kiosco táctil para cocineros/preparadores. Sin enlaces al POS, sin acceso a cobros ni a reportes financieros.
+  2. **Portal Maestro / Link Exclusivo para el Dueño del Sistema (Owner/Superadmin):**
+     - **Acceso Exclusivo:** Un panel o ruta dedicada (ej. `/master` o `/owner`) protegida por credencial o rol de superadministrador/dueño.
+     - **Capacidades del Dueño:**
+       - Visión global de todos los módulos: Finanzas completas, Configuración global de suscripciones, Inventario, Recetas, Auditoría de empleados.
+       - Control de accesos y asignación de permisos por PIN/usuario para cada estación (Cajeros, Cocineros, Administradores locales).
+       - Ocultamiento de la barra global en terminales de cajero y cocina para evitar fugas y distracciones.
