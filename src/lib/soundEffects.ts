@@ -1,26 +1,36 @@
 // Utilidad de efectos de sonido sintetizados mediante Web Audio API
 // 100% autónomo: no depende de archivos externos .mp3 ni CDNs que puedan fallar o dar 404
 
-let globalAudioCtx: AudioContext | null = null;
+let sharedAudioCtx: AudioContext | null = null;
+let lastBellTime = 0;
+let lastCashRegisterTime = 0;
+let lastOrderReadyTime = 0;
 
-function createSoundContext(): AudioContext | null {
+function getSharedAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   try {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return null;
-    const ctx = new AudioCtx();
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new AudioCtx();
     }
-    return ctx;
+    if (sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+    return sharedAudioCtx;
   } catch (e) {
-    console.warn('Error inicializando AudioContext:', e);
+    console.warn('Error con sharedAudioCtx:', e);
     return null;
   }
 }
 
 export function playOrderBell() {
-  const ctx = createSoundContext();
+  const nowMs = Date.now();
+  // Debounce de 350ms: Evita que mantener presionado el botón o el spam cree cientos de osciladores
+  if (nowMs - lastBellTime < 350) return;
+  lastBellTime = nowMs;
+
+  const ctx = getSharedAudioContext();
   if (!ctx) return;
 
   try {
@@ -44,18 +54,22 @@ export function playOrderBell() {
     };
 
     // Ding!
-    playNote(880, now, 0.45, 0.6);          // A5
-    playNote(1760, now, 0.3, 0.3);          // Armónico A6
+    playNote(880, now, 0.4, 0.6);            // A5
+    playNote(1760, now, 0.25, 0.3);          // Armónico A6
     // Dong!
-    playNote(1174.66, now + 0.18, 0.7, 0.7); // D6
-    playNote(2349.32, now + 0.18, 0.4, 0.25); // Armónico D7
+    playNote(1174.66, now + 0.16, 0.6, 0.7); // D6
+    playNote(2349.32, now + 0.16, 0.35, 0.25); // Armónico D7
   } catch (err) {
     console.warn('No se pudo reproducir el sonido de comanda:', err);
   }
 }
 
 export function playCashRegisterSound() {
-  const ctx = createSoundContext();
+  const nowMs = Date.now();
+  if (nowMs - lastCashRegisterTime < 400) return;
+  lastCashRegisterTime = nowMs;
+
+  const ctx = getSharedAudioContext();
   if (!ctx) return;
 
   try {
@@ -99,7 +113,11 @@ export function playCashRegisterSound() {
 
 // Sonido de "¡OÍDO COCINA! / PEDIDO DESPACHADO" (Efecto sónico de fuego y despacho exitoso)
 export function playOrderReadySound() {
-  const ctx = createSoundContext();
+  const nowMs = Date.now();
+  if (nowMs - lastOrderReadyTime < 350) return;
+  lastOrderReadyTime = nowMs;
+
+  const ctx = getSharedAudioContext();
   if (!ctx) return;
 
   try {
