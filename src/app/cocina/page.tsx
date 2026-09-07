@@ -55,6 +55,7 @@ export default function CocinaKDS() {
   const [comandas, setComandas] = useState<Comanda[]>([]);
   // PARCHE: Añadido estado para manejar errores en la KDS
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const isInitialLoad = useRef(true);
@@ -112,16 +113,19 @@ export default function CocinaKDS() {
       })));
     }, 60000); // Update time every minute
     
-    // Suscripción a Supabase
-    // PARCHE: Añadido manejo de estado de conexión para detectar caídas
+    // Polling rápido de respaldo (cada 3 segundos) para garantizar que si Supabase Realtime tarda o se reconecta, la orden suene de inmediato
+    const pollInterval = setInterval(() => {
+      fetchComandas();
+    }, 3000);
+
+    // Suscripción en tiempo real a Supabase
     const subscription = supabase
-      .channel('comandas_channel')
+      .channel('comandas_live_kds')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comandas' }, (payload) => {
         const isInsert = payload.eventType === 'INSERT';
         if (isInsert) {
           playOrderBell();
         }
-        // Al haber cambios, volvemos a obtener todo para traer sus items fácilmente (polling inteligente tras notificación)
         fetchComandas(isInsert);
       })
       .subscribe((status, err) => {
@@ -130,7 +134,7 @@ export default function CocinaKDS() {
           setErrorStatus(null);
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ Error en el canal de Supabase', err);
-          setErrorStatus('⚠️ Error de conexión en tiempo real. Se perdió la conexión con el servidor.');
+          setErrorStatus('⚠️ Error de conexión en tiempo real. Se activó el sondeo automático cada 3 segundos.');
         } else if (status === 'TIMED_OUT') {
           setErrorStatus('⚠️ Tiempo de espera agotado al conectar al servidor.');
         }
@@ -138,6 +142,7 @@ export default function CocinaKDS() {
       
     return () => {
       clearInterval(interval);
+      clearInterval(pollInterval);
       supabase.removeChannel(subscription);
     };
   }, []);
@@ -171,6 +176,28 @@ export default function CocinaKDS() {
 
   return (
     <div className="min-h-screen bg-zinc-950 p-6 font-mono text-zinc-100 selection:bg-orange-500 overflow-x-hidden">
+      {/* Indicador para desbloquear el audio si el navegador bloquea la reproducción automática */}
+      {!hasInteracted && (
+        <div 
+          onClick={() => {
+            playOrderBell();
+            setHasInteracted(true);
+          }}
+          className="mb-6 p-4 bg-gradient-to-r from-amber-600 to-orange-600 rounded-2xl border-2 border-amber-400 text-white font-bold flex items-center justify-between shadow-xl cursor-pointer hover:scale-[1.01] transition-transform animate-pulse"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🛎️</span>
+            <div>
+              <div className="text-base uppercase tracking-wider">¡Activar Sonido de Cocina!</div>
+              <div className="text-xs text-amber-100 font-normal">Los navegadores bloquean el sonido hasta que tocas la pantalla una vez. Haz clic aquí para activar el timbre automático.</div>
+            </div>
+          </div>
+          <span className="px-4 py-2 bg-black/40 rounded-xl text-xs uppercase font-black border border-white/30">
+            ACTIVAR AHORA
+          </span>
+        </div>
+      )}
+
       {/* PARCHE: Alerta visual en caso de error de conexión o base de datos */}
       {errorStatus && (
         <div className="mb-4 p-4 bg-red-900 border-2 border-red-500 text-white font-bold rounded shadow-lg animate-pulse">
