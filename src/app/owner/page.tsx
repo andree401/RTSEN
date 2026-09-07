@@ -6,8 +6,6 @@ import { useAppContext } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
 import BillingManager from '@/components/BillingManager';
 
-const DEFAULT_MASTER_PIN = '0000';
-
 export default function OwnerMasterPortal() {
   const { ownerId, logout, activeRole } = useAppContext();
   const [stats, setStats] = useState({
@@ -52,18 +50,120 @@ export default function OwnerMasterPortal() {
   const [revealedPins, setRevealedPins] = useState<Set<string>>(new Set());
   const [showAllPins, setShowAllPins] = useState<boolean>(false);
 
+  // Formulario de nuevo empleado
+  const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [newEmpName, setNewEmpName] = useState('');
+  const [newEmpRole, setNewEmpRole] = useState('cajero');
+  const [newEmpPin, setNewEmpPin] = useState('');
+  const [addEmpLoading, setAddEmpLoading] = useState(false);
+  const [addEmpError, setAddEmpError] = useState<string | null>(null);
+  const [addEmpSuccess, setAddEmpSuccess] = useState<string | null>(null);
+
+  const [masterPin, setMasterPin] = useState<string>('0000');
+  const [changePinInput, setChangePinInput] = useState<string>('');
+  const [changePinLoading, setChangePinLoading] = useState<boolean>(false);
+  const [changePinMsg, setChangePinMsg] = useState<string | null>(null);
+
+  const handleAddEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmpName) {
+      setAddEmpError('El nombre es requerido');
+      return;
+    }
+    setAddEmpLoading(true);
+    setAddEmpError(null);
+    setAddEmpSuccess(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('No hay sesión activa');
+
+      const res = await fetch('/api/empleados', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          nombre: newEmpName,
+          rol: newEmpRole,
+          pin: newEmpPin || undefined
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al crear empleado');
+
+      setAddEmpSuccess(`Empleado ${data.empleado.nombre} creado exitosamente con PIN ${data.empleado.pin}`);
+      setNewEmpName('');
+      setNewEmpPin('');
+      setNewEmpRole('cajero');
+      loadMasterData();
+    } catch (err: unknown) {
+      const error = err as Error;
+      setAddEmpError(error.message);
+    } finally {
+      setAddEmpLoading(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (empId: string) => {
+    if (!confirm('¿Seguro que deseas eliminar este empleado?')) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('No hay sesión activa');
+
+      const res = await fetch(`/api/empleados?id=${empId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al eliminar empleado');
+
+      loadMasterData();
+    } catch (err: unknown) {
+      const error = err as Error;
+      alert(error.message);
+    }
+  };
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedAuth = sessionStorage.getItem('fw_owner_authenticated');
-      if (storedAuth === 'true') {
+    if (typeof window === 'undefined') return;
+    const storedAuth = sessionStorage.getItem('fw_owner_authenticated');
+    const tempExpires = sessionStorage.getItem('fw_owner_temp_unlock_expires');
+
+    if (storedAuth !== 'true') return;
+
+    if (tempExpires) {
+      const expires = parseInt(tempExpires, 10);
+      if (Date.now() < expires) {
         setIsMasterAuthenticated(true);
+        const msLeft = expires - Date.now();
+        const timer = setTimeout(() => {
+          setIsMasterAuthenticated(false);
+          try {
+            sessionStorage.removeItem('fw_owner_authenticated');
+            sessionStorage.removeItem('fw_owner_temp_unlock_expires');
+          } catch {}
+        }, msLeft);
+        return () => clearTimeout(timer);
+      } else {
+        // Expirado — limpiar
+        sessionStorage.removeItem('fw_owner_authenticated');
+        sessionStorage.removeItem('fw_owner_temp_unlock_expires');
       }
+    } else {
+      // Desbloqueo normal sin expiración
+      setIsMasterAuthenticated(true);
     }
   }, []);
 
   const handleMasterUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput.trim() === DEFAULT_MASTER_PIN) {
+    if (pinInput.trim() === masterPin) {
       setIsMasterAuthenticated(true);
       setPinError(null);
       try {
@@ -117,6 +217,17 @@ export default function OwnerMasterPortal() {
 
       if (empData) {
         setEmpleados(empData);
+      }
+
+      const { data: negocioData } = await supabase
+        .from('negocios')
+        .select('pin_maestro')
+        .eq('id', ownerId)
+        .single();
+      if (negocioData?.pin_maestro) {
+        setMasterPin(negocioData.pin_maestro as string);
+      } else {
+        setMasterPin('0000');
       }
 
       // 2. Platillos del menú
@@ -242,6 +353,30 @@ export default function OwnerMasterPortal() {
     );
   }
 
+  const handleChangeMasterPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePinMsg(null);
+    if (!/^\d{4,8}$/.test(changePinInput)) {
+      setChangePinMsg('❌ El PIN debe tener entre 4 y 8 dígitos numéricos.');
+      return;
+    }
+    setChangePinLoading(true);
+    try {
+      const { error } = await supabase
+        .from('negocios')
+        .update({ pin_maestro: changePinInput })
+        .eq('id', ownerId!);
+      if (error) throw error;
+      setMasterPin(changePinInput);
+      setChangePinInput('');
+      setChangePinMsg('✅ PIN Maestro actualizado correctamente.');
+    } catch (err: unknown) {
+      setChangePinMsg(`❌ Error: ${String(err)}`);
+    } finally {
+      setChangePinLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-6 lg:p-10 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -305,6 +440,38 @@ export default function OwnerMasterPortal() {
             </div>
           </div>
         </header>
+
+        <section className="bg-amber-950/30 border border-amber-700/40 rounded-2xl p-5">
+          <h3 className="text-sm font-bold text-amber-300 mb-3 flex items-center gap-2">
+            🔑 Cambiar PIN Maestro
+            {masterPin === '0000' && (
+              <span className="text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full">
+                ⚠️ PIN inicial — Cámbialo
+              </span>
+            )}
+          </h3>
+          <form onSubmit={handleChangeMasterPin} className="flex gap-2">
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={8}
+              value={changePinInput}
+              onChange={e => setChangePinInput(e.target.value)}
+              placeholder="Nuevo PIN (4-8 dígitos)"
+              className="flex-1 bg-slate-950 border border-slate-700 focus:border-amber-500 text-white p-2.5 rounded-xl text-sm outline-none font-mono tracking-widest"
+            />
+            <button
+              type="submit"
+              disabled={changePinLoading}
+              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {changePinLoading ? '...' : 'Guardar'}
+            </button>
+          </form>
+          {changePinMsg && (
+            <p className="text-xs mt-2 text-slate-300">{changePinMsg}</p>
+          )}
+        </section>
 
         {/* Métricas Globales del Negocio */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -463,10 +630,16 @@ export default function OwnerMasterPortal() {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowAddEmployee(!showAddEmployee)}
+                className="text-xs font-semibold px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all cursor-pointer shadow-md"
+              >
+                {showAddEmployee ? '✖ Cancelar' : '➕ Agregar Empleado'}
+              </button>
               {empleados.length > 0 && (
                 <button
                   onClick={toggleAllPins}
-                  className="text-xs font-semibold px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-all cursor-pointer"
+                  className="text-xs font-semibold px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-all cursor-pointer"
                 >
                   {showAllPins ? '🙈 Ocultar Todos' : '👁️ Revelar Todos'}
                 </button>
@@ -477,18 +650,71 @@ export default function OwnerMasterPortal() {
             </div>
           </div>
 
+          {showAddEmployee && (
+            <div className="mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+              <h4 className="text-sm font-bold text-white mb-3">Registrar Nuevo Empleado</h4>
+              <form onSubmit={handleAddEmployee} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Nombre</label>
+                  <input
+                    type="text"
+                    value={newEmpName}
+                    onChange={(e) => setNewEmpName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 text-white text-sm p-2 rounded-lg focus:border-amber-500 outline-none"
+                    placeholder="Ej. Juan Pérez"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Rol</label>
+                  <select
+                    value={newEmpRole}
+                    onChange={(e) => setNewEmpRole(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 text-white text-sm p-2 rounded-lg focus:border-amber-500 outline-none"
+                  >
+                    <option value="cajero">Cajero POS</option>
+                    <option value="cocina">Cocina KDS</option>
+                    <option value="admin">Administrador</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">PIN (5 dígitos)</label>
+                  <input
+                    type="text"
+                    value={newEmpPin}
+                    onChange={(e) => setNewEmpPin(e.target.value)}
+                    maxLength={5}
+                    className="w-full bg-slate-950 border border-slate-700 text-white text-sm p-2 rounded-lg focus:border-amber-500 outline-none"
+                    placeholder="Auto-generado"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    disabled={addEmpLoading}
+                    className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-sm py-2 px-3 rounded-lg transition-all shadow-md disabled:opacity-50"
+                  >
+                    {addEmpLoading ? 'Guardando...' : 'Guardar Empleado'}
+                  </button>
+                </div>
+              </form>
+              {addEmpError && <div className="mt-3 text-xs text-rose-400 font-semibold">{addEmpError}</div>}
+              {addEmpSuccess && <div className="mt-3 text-xs text-emerald-400 font-semibold">{addEmpSuccess}</div>}
+            </div>
+          )}
+
           {isLoading ? (
             <div className="py-6 text-center text-xs text-slate-400">Cargando datos de empleados...</div>
           ) : empleados.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-500 bg-slate-900/40 rounded-xl border border-dashed border-slate-700/60">
-              No hay cajeros registrados aún. Cuando un empleado se registre en la pantalla de caja, su PIN de 5 dígitos aparecerá aquí.
+              No hay personal registrado. Usa el botón Agregar Empleado para registrar cajeros, cocineros y administradores.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {empleados.map(emp => {
                 const isRevealed = revealedPins.has(emp.id);
                 return (
-                  <div key={emp.id} className="bg-slate-900/60 border border-slate-700/70 p-3.5 rounded-xl flex items-center justify-between">
+                  <div key={emp.id} className="bg-slate-900/60 border border-slate-700/70 p-3.5 rounded-xl flex items-center justify-between group">
                     <div>
                       <div className="font-bold text-slate-200 text-xs">{emp.nombre}</div>
                       <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
@@ -505,6 +731,13 @@ export default function OwnerMasterPortal() {
                         title={isRevealed ? 'Ocultar PIN' : 'Ver PIN'}
                       >
                         {isRevealed ? '🙈' : '👁️'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEmployee(emp.id)}
+                        className="p-1 text-slate-400 hover:text-rose-400 transition-colors text-xs cursor-pointer opacity-0 group-hover:opacity-100"
+                        title="Eliminar empleado"
+                      >
+                        🗑️
                       </button>
                     </div>
                   </div>

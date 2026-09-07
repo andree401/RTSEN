@@ -28,8 +28,10 @@ export default function SubscriptionGuardModal() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      // Siempre refrescar — crítico para iOS Safari que congela tokens
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      const session = refreshData?.session;
+      if (refreshError || !session) {
         setIsBlocked(false);
         return;
       }
@@ -40,7 +42,10 @@ export default function SubscriptionGuardModal() {
         },
       });
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        setIsBlocked(false);
+        return;
+      }
 
       const data = await res.json();
       if (data && data.active === false) {
@@ -55,6 +60,7 @@ export default function SubscriptionGuardModal() {
       }
     } catch (err) {
       console.error('Error en subscription guard:', err);
+      setIsBlocked(false);
     }
   };
 

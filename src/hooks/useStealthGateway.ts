@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface StealthGatewayOptions {
@@ -8,18 +8,28 @@ interface StealthGatewayOptions {
   minIntervalMs?: number; // Mínimo 500ms
   maxIntervalMs?: number; // Máximo 2500ms
   targetRoute?: string;
+  onActivate?: () => void;
 }
 
 export function useStealthGateway({
   requiredTaps = 5,
   minIntervalMs = 500,
   maxIntervalMs = 2500,
-  targetRoute = '/sys-ops'
+  targetRoute = '/sys-ops',
+  onActivate
 }: StealthGatewayOptions = {}) {
   const router = useRouter();
-  const tapCountRef = useRef(0);
+  const tapProgressRef = useRef<number>(0);
+  const [tapProgressDisplay, setTapProgressDisplay] = useState<number>(0);
   const lastTapTimeRef = useRef(0);
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const setProgress = useCallback((val: number) => {
+    if (tapProgressRef.current !== val) {
+      tapProgressRef.current = val;
+      setTapProgressDisplay(val);
+    }
+  }, []);
 
   // Limpiar timer al desmontar
   useEffect(() => {
@@ -39,19 +49,19 @@ export function useStealthGateway({
 
     if (last === 0) {
       // Primer toque
-      tapCountRef.current = 1;
+      setProgress(1);
       lastTapTimeRef.current = now;
     } else {
       const delta = now - last;
 
       if (delta >= minIntervalMs && delta <= maxIntervalMs) {
         // Ritmo válido (medio segundo o más de separación)
-        tapCountRef.current += 1;
+        setProgress(tapProgressRef.current + 1);
         lastTapTimeRef.current = now;
 
-        if (tapCountRef.current >= requiredTaps) {
+        if (tapProgressRef.current >= requiredTaps) {
           // Secuencia rítmica completada
-          tapCountRef.current = 0;
+          setProgress(0);
           lastTapTimeRef.current = 0;
 
           // Vibración háptica en dispositivos móviles si está soportada
@@ -61,25 +71,29 @@ export function useStealthGateway({
             }
           } catch {}
 
-          router.push(targetRoute);
+          if (onActivate) {
+            onActivate();
+          } else {
+            router.push(targetRoute);
+          }
           return true;
         }
       } else {
         // Toque fuera de ritmo (demasiado rápido < 500ms o expirado > 2.5s)
         // Reiniciar conteo con este nuevo toque como el primero
-        tapCountRef.current = 1;
+        setProgress(1);
         lastTapTimeRef.current = now;
       }
     }
 
     // Timer de seguridad para expirar la secuencia si no se toca en maxIntervalMs
     resetTimerRef.current = setTimeout(() => {
-      tapCountRef.current = 0;
+      setProgress(0);
       lastTapTimeRef.current = 0;
     }, maxIntervalMs);
 
     return false;
-  }, [minIntervalMs, maxIntervalMs, requiredTaps, targetRoute, router]);
+  }, [minIntervalMs, maxIntervalMs, requiredTaps, targetRoute, router, onActivate, setProgress]);
 
-  return { triggerTap };
+  return { triggerTap, tapProgress: tapProgressDisplay };
 }

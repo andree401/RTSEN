@@ -4,6 +4,28 @@ Registro cronológico estricto y forense basado en los commits, tags y despliegu
 
 ---
 
+## [5.1.0] — Intervención v5 — 2026-09-07
+
+### 🔒 Seguridad
+- PIN Maestro del Portal del Dueño ya no está hardcodeado — persiste en `negocios.pin_maestro`
+- API `pin-login` migrada de `pg.Client` a Supabase Admin SDK (elimina pool exhaustion)
+- CRUD de empleados protegido con verificación de token JWT en cada operación
+
+### ✨ Nuevas Funcionalidades
+- Portal del Dueño: CRUD completo de empleados (crear con PIN auto-generado, ver, eliminar)
+- Desbloqueo temporal de 10 segundos con 5 taps rítmicos en el logo del login
+- Indicador visual de progreso de taps (badge numérico animado en el logo)
+- Formulario de cambio de PIN Maestro con advertencia si PIN es '0000'
+
+### 🐛 Correcciones
+- `SubscriptionGuardModal`: refresca sesión antes de verificar Stripe — fix para iOS Safari
+- Middleware: matcher actualizado para excluir sw.js, manifest.json, icons/
+
+### 📖 Documentación
+- `scripts/migrate-add-pin-maestro.sql` — SQL para nueva columna
+
+---
+
 ## [5.0.0] - 2026-09-07
 ### 🚀 Hito Enterprise: PWA, Multi-Tenant RLS & Facturación Stripe
 - **Módulo de Facturación Stripe Billing**:

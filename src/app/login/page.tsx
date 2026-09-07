@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppContext } from '@/context/AppContext';
 import { useStealthGateway } from '@/hooks/useStealthGateway';
@@ -8,7 +8,23 @@ import { useStealthGateway } from '@/hooks/useStealthGateway';
 export default function LoginPage() {
   const router = useRouter();
   const { login, loginWithPin } = useAppContext();
-  const { triggerTap } = useStealthGateway({ minIntervalMs: 500, requiredTaps: 5, targetRoute: '/sys-ops' });
+  const handleStealthActivate = useCallback(() => {
+    try {
+      sessionStorage.setItem('fw_owner_authenticated', 'true');
+      sessionStorage.setItem(
+        'fw_owner_temp_unlock_expires',
+        String(Date.now() + 10_000)
+      );
+    } catch {}
+    router.push('/owner');
+  }, [router]);
+
+  const { triggerTap, tapProgress } = useStealthGateway({
+    minIntervalMs: 500,
+    requiredTaps: 5,
+    targetRoute: '/owner',
+    onActivate: handleStealthActivate,
+  });
 
   // Atajo de teclado encubierto: Ctrl + Shift + S
   React.useEffect(() => {
@@ -108,12 +124,20 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={triggerTap}
-            className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 p-0.5 mx-auto mb-3 shadow-lg shadow-indigo-600/30 cursor-pointer active:scale-95 transition-all select-none focus:outline-none"
+            className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-500 p-0.5 mx-auto mb-3 shadow-lg shadow-indigo-600/30 cursor-pointer active:scale-95 transition-all select-none focus:outline-none"
+            aria-label="Logo de la aplicación"
             title="RTSEN"
           >
             <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-3xl">
               ⚡
             </div>
+            {tapProgress > 0 && tapProgress < 5 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-400 rounded-full
+                               text-[10px] font-black text-black flex items-center justify-center
+                               animate-pulse shadow-lg shadow-amber-400/40">
+                {tapProgress}
+              </span>
+            )}
           </button>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
             RTSEN ERP
