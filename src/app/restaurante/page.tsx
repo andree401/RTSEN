@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAppContext, Dish } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
 import { playCashRegisterSound } from '@/lib/soundEffects';
@@ -17,7 +18,7 @@ type Cashier = {
 const TABLES = ['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4', 'Mesa 5', 'Barra'];
 
 export default function RestaurantePOS() {
-  const { menu, recordFinance, ownerId } = useAppContext();
+  const { menu, refreshMenu, addDish, recordFinance, ownerId } = useAppContext();
   
   const [isCashierLoggedIn, setIsCashierLoggedIn] = useState(false);
   const [currentCashier, setCurrentCashier] = useState<Cashier | null>(null);
@@ -32,6 +33,46 @@ export default function RestaurantePOS() {
   const [expressName, setExpressName] = useState('');
   
   const [order, setOrder] = useState<OrderItem[]>([]);
+  const [dishSearch, setDishSearch] = useState('');
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  useEffect(() => {
+    if (refreshMenu) {
+      refreshMenu();
+    }
+  }, []);
+
+  const handleSeedDefaultMenu = async () => {
+    if (!ownerId) return;
+    setIsSeeding(true);
+    try {
+      const sampleDishes = [
+        { name: 'Casado Tradicional con Carne', price: 4500 },
+        { name: 'Tacos al Pastor (3 uds)', price: 3500 },
+        { name: 'Hamburguesa Artesanal Deluxe', price: 5200 },
+        { name: 'Pizza Personal Margarita', price: 4800 },
+        { name: 'Gallo Pinto Especial', price: 3200 },
+        { name: 'Refresco Natural del Día', price: 1500 },
+        { name: 'Café Chorreado Típico', price: 1200 },
+      ];
+
+      for (const dish of sampleDishes) {
+        await addDish(dish);
+      }
+      if (refreshMenu) {
+        await refreshMenu();
+      }
+    } catch (e) {
+      console.error('Error poblando menú:', e);
+      alert('Error al poblar menú de ejemplo.');
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const filteredMenu = menu.filter((dish) =>
+    dish.name?.toLowerCase().includes(dishSearch.toLowerCase())
+  );
 
   const handleLogin = async () => {
     if (isRegistering) {
@@ -297,19 +338,88 @@ export default function RestaurantePOS() {
         </div>
 
         {/* Menú */}
-        <div className="bg-white p-4 rounded-xl shadow-sm flex-1 overflow-auto">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Menú</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            {menu.map((dish) => (
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex-1 flex flex-col overflow-hidden">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-800">Menú de Platillos</h2>
+              <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-bold">
+                {filteredMenu.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-52">
+                <input
+                  type="text"
+                  placeholder="Buscar platillo..."
+                  value={dishSearch}
+                  onChange={(e) => setDishSearch(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 pl-8 pr-3 py-1.5 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                />
+                <span className="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+              </div>
               <button
-                key={dish.id}
-                onClick={() => addToOrder(dish)}
-                className="p-4 border rounded-xl hover:shadow-md hover:border-blue-500 transition-all text-left flex flex-col justify-between h-24 bg-white"
+                onClick={() => refreshMenu && refreshMenu()}
+                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                title="Recargar Menú"
               >
-                <span className="font-semibold text-gray-800">{dish.name}</span>
-                <span className="text-blue-600 font-bold">₡{dish.price.toLocaleString('es-CR')}</span>
+                🔄
               </button>
-            ))}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto">
+            {menu.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center p-6 text-center bg-slate-50/60 rounded-2xl border-2 border-dashed border-slate-200 my-auto">
+                <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-3xl mb-3 shadow-sm">
+                  🍽️
+                </div>
+                <h3 className="text-base font-bold text-slate-800 mb-1">
+                  No hay platillos en el menú
+                </h3>
+                <p className="text-xs text-slate-500 max-w-xs mb-5">
+                  Aún no tienes platillos registrados para tu restaurante. Puedes cargar un menú de ejemplo con un clic o crearlos en el panel de administración.
+                </p>
+                <div className="flex flex-wrap gap-2.5 justify-center">
+                  <button
+                    onClick={handleSeedDefaultMenu}
+                    disabled={isSeeding}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>⚡</span>
+                    <span>{isSeeding ? 'Creando Platillos...' : 'Cargar Menú de Ejemplo'}</span>
+                  </button>
+                  <Link
+                    href="/admin"
+                    className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                  >
+                    <span>⚙️</span>
+                    <span>Ir a Administrador</span>
+                  </Link>
+                </div>
+              </div>
+            ) : filteredMenu.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs">
+                No se encontraron platillos con &quot;{dishSearch}&quot;
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredMenu.map((dish) => (
+                  <button
+                    key={dish.id}
+                    onClick={() => addToOrder(dish)}
+                    className="p-3.5 border border-slate-200/80 rounded-2xl hover:shadow-md hover:border-blue-400 hover:bg-blue-50/20 active:scale-98 transition-all text-left flex flex-col justify-between h-24 bg-white group cursor-pointer"
+                  >
+                    <span className="font-bold text-slate-800 text-sm line-clamp-2 group-hover:text-blue-600 transition-colors">
+                      {dish.name}
+                    </span>
+                    <span className="text-emerald-600 font-extrabold text-sm">
+                      ₡{dish.price.toLocaleString('es-CR')}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

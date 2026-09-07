@@ -17,6 +17,7 @@ type AppContextType = {
   logout: () => Promise<void>;
   
   menu: Dish[];
+  refreshMenu: () => Promise<void>;
   addDish: (dish: Omit<Dish, 'id'>) => Promise<void>;
   updateDish: (id: string, updatedDish: Omit<Dish, 'id'>) => Promise<void>;
   deleteDish: (id: string) => Promise<void>;
@@ -57,6 +58,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.error('Error fetching menu:', error);
     } else if (data) {
       setMenu(data.map(d => ({ id: d.id, name: d.nombre, price: d.precio })));
+    }
+  };
+
+  const refreshMenu = async () => {
+    if (ownerId) {
+      await fetchMenu(ownerId);
     }
   };
 
@@ -202,7 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppContext.Provider value={{ ownerId, login, logout, menu, addDish, updateDish, deleteDish, recordFinance }}>
+    <AppContext.Provider value={{ ownerId, login, logout, menu, refreshMenu, addDish, updateDish, deleteDish, recordFinance }}>
       {children}
       <SessionWarningModal
         isOpen={isWarningOpen}
