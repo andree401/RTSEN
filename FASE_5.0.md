@@ -55,8 +55,8 @@ Este documento detalla las próximas grandes mejoras (Features) a implementar en
 - **Estado:** ✅ Completado e implementado en v4.7.1.
 - **Detalle:** Configuración en lote de múltiples insumos para platillos nuevos y existentes; POS de restaurante modernizado con moneda en Colones (₡), incremento/decremento dinámico (+ / -) de cantidades y comanda digital sin papel.
 
-## 9. Rediseño Luminoso, Sistema Sensorial de Audio y Centro de Historial (v5.8.0) 🎨🛎️💰
-- **Estado:** ✅ Completado e implementado en v5.8.0.
+## 9. Rediseño Luminoso, Sistema Sensorial de Audio y Centro de Historial (v4.8.0) 🎨🛎️💰
+- **Estado:** ✅ Completado e implementado en v4.8.0.
 - **Detalle:**
   - Rediseño integral visual a tema SaaS vivo y luminoso (eliminación de modo oscuro cavernoso forzado).
   - Alertas acústicas sintetizadas con Web Audio API: campana en Cocina KDS y sonido metálico de caja registradora en Punto de Venta.

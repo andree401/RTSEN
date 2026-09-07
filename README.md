@@ -1,12 +1,12 @@
-# 🚀 RTSEN - ERP SaaS Multi-Tenant Nivel Corporativo (Versión 5.8.0)
+# 🚀 RTSEN - ERP SaaS Multi-Tenant Nivel Corporativo (Versión 4.8.0)
 
 Bienvenidos al repositorio oficial de **RTSEN / Finanzas Web Pro**, una plataforma SaaS de administración restaurantera escalable, robusta y diseñada para la nube. Este sistema incluye puntos de venta (POS), gestión de empleados, inventario automatizado, Kitchen Display System (KDS) en tiempo real con alertas auditivas y un dashboard financiero vivo de última generación.
 
 ## 📖 1. Descripción del Proyecto
 
 RTSEN es un sistema integral (ERP) que permite a los dueños de restaurantes gestionar sus operaciones de manera eficiente y centralizada. Cuenta con las siguientes características principales:
-- **Interfaz SaaS Viva & Luminosa (v5.8):** Dashboard financiero rediseñado con alta legibilidad, colores vibrantes, gráficos Recharts dinámicos y métricas de alto contraste.
-- **Sistema Sensorial de Audio Autónomo (v5.8):** Timbre acústico de comanda en Cocina KDS y efecto metálico de caja registradora al cobrar mesas, generado vía Web Audio API sin dependencias externas.
+- **Interfaz SaaS Viva & Luminosa (v4.8):** Dashboard financiero rediseñado con alta legibilidad, colores vibrantes, gráficos Recharts dinámicos y métricas de alto contraste.
+- **Sistema Sensorial de Audio Autónomo (v4.8):** Timbre acústico de comanda en Cocina KDS y efecto metálico de caja registradora al cobrar mesas, generado vía Web Audio API sin dependencias externas.
 - **Historial Completo de Versiones:** Centro cronológico interactivo para visibilidad transparente del ciclo de vida del software.
 - **Punto de Venta Adaptado (Colones ₡):** Gestión de comandas optimizada con soporte para añadir múltiples unidades del mismo platillo (+ / -), visualización en moneda local (Colones) y flujo 100% digital sin impresión innecesaria de papel.
 - **Arquitectura de Recetas Multi-Ingrediente:** Configuración en lote de múltiples ingredientes con cantidades y unidades para platillos nuevos o existentes en una sola acción.

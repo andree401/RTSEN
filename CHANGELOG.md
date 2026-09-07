@@ -4,7 +4,7 @@ Todas las novedades y cambios notables del sistema están documentados en este a
 
 ---
 
-## [5.8.0] - 2026-09-06
+## [4.8.0] - 2026-09-06
 ### ✨ Agregado & Mejorado
 - **Interfaz Luminosa & Viva**: Rediseño visual completo eliminando fondos oscuros deprimentes. Uso de paleta fresca, gradientes modernos y tarjetas métricas de alta gama.
 - **Efectos Acústicos Sintetizados (Web Audio API)**:

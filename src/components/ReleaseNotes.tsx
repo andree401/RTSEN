@@ -16,7 +16,7 @@ type VersionRecord = {
 
 const VERSION_HISTORY: VersionRecord[] = [
   {
-    version: 'v5.8.0',
+    version: 'v4.8.0',
     tag: 'Actual',
     title: 'Interfaz Viva & Sistema Sensorial de Audio',
     date: 'Septiembre 2026',
