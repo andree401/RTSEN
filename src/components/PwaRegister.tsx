@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 
@@ -23,17 +23,38 @@ export default function PwaRegister() {
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // No mostrar banner molesto si el usuario ya lo descartó recientemente
+
+      // Si el usuario ya lo descartó, respetar su decisión
+      const dismissed = localStorage.getItem('pwa_install_dismissed');
+      if (dismissed) return;
+
+      // Verificar si el modal de ReleaseNotes está pendiente de mostrarse
+      const lastSeenVersion = localStorage.getItem('last_seen_version');
+      const isReleaseNotesPending = lastSeenVersion !== '5.0.0';
+
+      if (!isReleaseNotesPending) {
+        // Si ya vio las notas, mostrar tras una pequeña pausa de cortesía
+        setTimeout(() => setShowInstallBanner(true), 1200);
+      }
+    };
+
+    // 3. Escuchar cuando el usuario cierre el cartel de bienvenida formal
+    const handleReleaseNotesClosed = () => {
       const dismissed = localStorage.getItem('pwa_install_dismissed');
       if (!dismissed) {
-        setShowInstallBanner(true);
+        // Esperar 800ms tras cerrar las notas para que la transición sea fluida y no invasiva
+        setTimeout(() => {
+          setShowInstallBanner(true);
+        }, 800);
       }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('release_notes_closed', handleReleaseNotesClosed);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('release_notes_closed', handleReleaseNotesClosed);
     };
   }, []);
 
