@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { playOrderBell } from '@/lib/soundEffects';
+import { playOrderBell, playOrderReadySound } from '@/lib/soundEffects';
 
 type Comanda = {
   id: string;
@@ -148,6 +148,9 @@ export default function CocinaKDS() {
   }, []);
 
   const despacharFuego = async (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+    // Reproducir sonido triunfal de comanda despachada / lista para servir
+    playOrderReadySound();
+
     const btn = e.currentTarget;
     const rect = btn.getBoundingClientRect();
     const x = rect.left + rect.width / 2;

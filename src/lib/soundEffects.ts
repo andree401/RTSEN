@@ -106,3 +106,53 @@ export function playCashRegisterSound() {
     console.warn('No se pudo reproducir el sonido de cobro:', err);
   }
 }
+
+// Sonido de "¡OÍDO COCINA! / PEDIDO DESPACHADO" (Efecto sónico de fuego y despacho exitoso)
+export function playOrderReadySound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    const now = ctx.currentTime;
+
+    // 1. Golpe de platillo / wok caliente (whoosh rápido)
+    const playWhoosh = (start: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(550, start);
+      osc.frequency.exponentialRampToValueAtTime(150, start + 0.15);
+      gain.gain.setValueAtTime(0.4, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.15);
+    };
+
+    // 2. Tono de éxito / listo para servir (acorde ascendente rápido de 2 notas)
+    const playDing = (freq: number, start: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0.6, start);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration);
+    };
+
+    playWhoosh(now);
+    playDing(987.77, now + 0.05, 0.25); // B5
+    playDing(1318.51, now + 0.15, 0.4); // E6
+    playDing(1975.53, now + 0.22, 0.5); // B6 (Tono brillante de pedido despachado)
+  } catch (err) {
+    console.warn('No se pudo reproducir el sonido de despacho:', err);
+  }
+}
