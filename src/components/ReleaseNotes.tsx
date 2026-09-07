@@ -43,9 +43,9 @@ export default function ReleaseNotes() {
               <div className="text-gray-300 space-y-3 mb-6">
                 <p>Novedades en esta actualización:</p>
                 <ul className="list-disc pl-5 space-y-2">
-                  <li>Protección financiera: Expiración automática de sesión por inactividad tras 15 minutos.</li>
-                  <li>Modal de advertencia con cuenta regresiva en vivo y sincronización multi-pestaña.</li>
-                  <li>Optimización y correcciones en la gestión segura de autenticación y tenants.</li>
+                  <li>Módulo de Recetas Multi-Ingrediente: Asocia múltiples insumos a platillos nuevos o existentes en un solo paso.</li>
+                  <li>POS Restaurante en Colones (₡): Precios adaptados a moneda local y controles (+ / -) para agregar múltiples unidades de un mismo platillo a la comanda.</li>
+                  <li>Optimización ecológica y operativa: Eliminación del botón de impresión física para flujo 100% digital con cocina.</li>
                 </ul>
               </div>
               <div className="flex gap-3 mt-6">

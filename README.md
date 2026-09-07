@@ -1,10 +1,12 @@
-# 🚀 RTSEN - ERP SaaS Multi-Tenant Nivel Corporativo (Versión 4.7.0)
+# 🚀 RTSEN - ERP SaaS Multi-Tenant Nivel Corporativo (Versión 4.7.1)
 
 Bienvenidos al repositorio oficial de **RTSEN**, una plataforma SaaS de administración restaurantera escalable, robusta y diseñada para la nube. Este sistema incluye puntos de venta (POS), gestión de empleados, inventario automatizado y un Kitchen Display System (KDS) en tiempo real.
 
 ## 📖 1. Descripción del Proyecto
 
 RTSEN es un sistema integral (ERP) que permite a los dueños de restaurantes gestionar sus operaciones de manera eficiente y centralizada. Cuenta con las siguientes características principales:
+- **Punto de Venta Adaptado (Colones ₡):** Gestión de comandas optimizada con soporte para añadir múltiples unidades del mismo platillo (+ / -), visualización en moneda local (Colones) y flujo 100% digital sin impresión innecesaria de papel.
+- **Arquitectura de Recetas Multi-Ingrediente:** Configuración en lote de múltiples ingredientes con cantidades y unidades para platillos nuevos o existentes en una sola acción.
 - **Seguridad Autónoma y Sesiones Protegidas:** Expiración inteligente por inactividad (15 minutos) con advertencia previa y sincronización multi-pestaña para blindar datos financieros.
 - **Gestión Multi-Tenant:** Negocios y roles integrados directamente en la base de datos para máxima seguridad.
 - **Sistema Global de Empleados:** Administración de cajeros y accesos mediante PINs universales.

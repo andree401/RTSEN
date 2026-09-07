@@ -51,3 +51,8 @@ Este documento detalla las próximas grandes mejoras (Features) a implementar en
 - **Estado:** ✅ Completado e implementado en v4.7.0.
 - **Detalle:** Timeout de inactividad de 15 minutos con advertencia visual de 2 minutos (contador regresivo interactivo) y sincronización entre pestañas para impedir accesos desatendidos a las finanzas del restaurante.
 
+## 8. Arquitectura de Recetas Multi-Ingrediente y POS en Colones (v4.7.1) 🍲₡
+- **Estado:** ✅ Completado e implementado en v4.7.1.
+- **Detalle:** Configuración en lote de múltiples insumos para platillos nuevos y existentes; POS de restaurante modernizado con moneda en Colones (₡), incremento/decremento dinámico (+ / -) de cantidades y comanda digital sin papel.
+
+
