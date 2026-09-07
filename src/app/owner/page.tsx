@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 const DEFAULT_MASTER_PIN = '0000';
 
 export default function OwnerMasterPortal() {
-  const { ownerId, logout } = useAppContext();
+  const { ownerId, logout, activeRole } = useAppContext();
   const [stats, setStats] = useState({
     totalEmpleados: 0,
     totalPlatillos: 0,
@@ -18,6 +18,29 @@ export default function OwnerMasterPortal() {
   const [empleados, setEmpleados] = useState<Array<{ id: string; nombre: string; pin: string; rol?: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Aislamiento Zero-Trust: Solo el rol de Propietario autenticado tiene acceso
+  if (activeRole !== 'owner') {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full text-center shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 text-3xl flex items-center justify-center mx-auto mb-4 border border-rose-200">
+            👑
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-1">Portal Exclusivo del Propietario</h2>
+          <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+            Tu estación actual ({activeRole ? activeRole.toUpperCase() : 'NO AUTORIZADA'}) no tiene privilegios para acceder al panel maestro del Propietario.
+          </p>
+          <Link
+            href={activeRole === 'cajero' ? '/restaurante' : activeRole === 'cocina' ? '/cocina' : activeRole === 'admin' ? '/admin' : '/login'}
+            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-block"
+          >
+            Volver a mi Estación
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Aislamiento Zero-Trust: Bloqueo de acceso maestro con PIN del Propietario
   const [isMasterAuthenticated, setIsMasterAuthenticated] = useState<boolean>(false);
@@ -211,7 +234,7 @@ export default function OwnerMasterPortal() {
             <Link href="/" className="hover:text-slate-300 transition-colors">
               ← Volver al Panel
             </Link>
-            <span>PIN predeterminado: 0000</span>
+            <span className="text-slate-600">Acceso restringido al Propietario</span>
           </div>
         </div>
       </div>

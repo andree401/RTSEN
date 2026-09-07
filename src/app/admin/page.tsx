@@ -14,8 +14,8 @@ export default function AdminPanel() {
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
 
-  // Protección de Estación: Cajeros y Cocineros no pueden alterar precios o menú
-  if (activeRole === 'cajero' || activeRole === 'cocina') {
+  // Protección de Estación: Solo admin y owner pueden alterar precios o menú
+  if (activeRole !== 'admin' && activeRole !== 'owner') {
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-4">
         <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full text-center shadow-xl">
@@ -24,10 +24,10 @@ export default function AdminPanel() {
           </div>
           <h2 className="text-xl font-bold text-slate-800 mb-1">Acceso Administrativo Restringido</h2>
           <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-            Tu estación actual ({activeRole.toUpperCase()}) no tiene permisos para modificar el catálogo de precios o existencias del restaurante.
+            Tu estación actual ({activeRole ? activeRole.toUpperCase() : 'NO AUTORIZADA'}) no tiene permisos para modificar el catálogo de precios o existencias del restaurante.
           </p>
           <a
-            href={activeRole === 'cajero' ? '/restaurante' : '/cocina'}
+            href={activeRole === 'cajero' ? '/restaurante' : activeRole === 'cocina' ? '/cocina' : '/login'}
             className="inline-block py-2.5 px-5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-md transition-all"
           >
             Volver a mi Estación de Trabajo

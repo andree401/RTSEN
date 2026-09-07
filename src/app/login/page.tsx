@@ -57,11 +57,12 @@ export default function LoginPage() {
     setErrorMsg(null);
     setIsLoading(true);
     try {
-      const emp = await loginWithPin(pin, selectedRole === 'admin' ? 'admin' : undefined);
-      // Redirección inteligente según el rol autenticado
-      if (selectedRole === 'cocina') {
+      const emp = await loginWithPin(pin, selectedRole !== 'owner' ? selectedRole : undefined);
+      // Redirección inteligente según el rol autenticado desde el servidor
+      const targetRole = emp.rol || selectedRole;
+      if (targetRole === 'cocina') {
         router.push('/cocina');
-      } else if (selectedRole === 'admin') {
+      } else if (targetRole === 'admin') {
         router.push('/admin');
       } else {
         router.push('/restaurante');

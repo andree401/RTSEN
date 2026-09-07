@@ -148,4 +148,132 @@ describe('Portal Secreto SuperAdmin: Endpoint /api/sys-ops/metrics', () => {
     expect(json.restaurantes.length).toBe(1);
     expect(json.restaurantes[0].nombre).toBe('Café Central');
   });
+
+  it('debe rechazar métodos HTTP indebidos (GET, PUT, DELETE) con status 405 Method Not Allowed', async () => {
+    const { GET, PUT, DELETE } = await import('../src/app/api/sys-ops/metrics/route');
+
+    const resGet = await GET();
+    expect(resGet.status).toBe(405);
+    const jsonGet = await resGet.json();
+    expect(jsonGet.error).toContain('Método no permitido');
+
+    const resPut = await PUT();
+    expect(resPut.status).toBe(405);
+    const jsonPut = await resPut.json();
+    expect(jsonPut.error).toContain('Método no permitido');
+
+    const resDelete = await DELETE();
+    expect(resDelete.status).toBe(405);
+    const jsonDelete = await resDelete.json();
+    expect(jsonDelete.error).toContain('Método no permitido');
+  });
+
+  it('debe mitigar cabeceras maliciosas (SQLi, XSS, Path Traversal, Buffer Overflow) respondiendo 404 sin consultar BD', async () => {
+    const maliciousHeadersList: Record<string, string>[] = [
+      { 'x-superadmin-secret': "' OR '1'='1" },
+      { 'x-superadmin-secret': '<script>alert("XSS")</script>' },
+      { 'x-superadmin-secret': '../../../../etc/shadow' },
+      { 'x-superadmin-secret': 'A'.repeat(5000) },
+      { 'x-superadmin-secret': 'rtsen-master-saas-super-secret-2026!%00exploit' },
+      { 'authorization': 'Bearer malicious_token_attempt' },
+    ];
+
+    for (const badHeaders of maliciousHeadersList) {
+      const req = new Request('http://localhost:3000/api/sys-ops/metrics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...badHeaders,
+        },
+        body: JSON.stringify({ secretKey: 'invalid' }),
+      });
+
+      const res = await superAdminHandler(req);
+      expect(res.status).toBe(404);
+      const json = await res.json();
+      expect(json.error).toBe('Not found');
+    }
+
+    // Verificar independencia y que jamás tocó la base de datos
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe('Auditoría Edge Cases: Validación Estricta de PIN (5 Dígitos Numéricos)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('debe rechazar PINs que contengan letras con código 400', async () => {
+    const invalidPins = ['12a45', 'abcde', 'PIN12', '1234F', '0000x'];
+
+    for (const pin of invalidPins) {
+      const req = new Request('http://localhost:3000/api/auth/pin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+
+      const res = await pinLoginHandler(req);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toContain('Formato de PIN inválido');
+    }
+    // No debe consultar base de datos si el formato es inválido
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('debe rechazar PINs con espacios intermedios o espacios internos con código 400', async () => {
+    const spacedPins = ['12 45', '1 2 3 4 5', '123 4', ' 12 34 '];
+
+    for (const pin of spacedPins) {
+      const req = new Request('http://localhost:3000/api/auth/pin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+
+      const res = await pinLoginHandler(req);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toContain('Formato de PIN inválido');
+    }
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('debe rechazar PINs con longitud distinta a exactamente 5 dígitos con código 400', async () => {
+    const wrongLengthPins = ['1', '12', '123', '1234', '123456', '123456789'];
+
+    for (const pin of wrongLengthPins) {
+      const req = new Request('http://localhost:3000/api/auth/pin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+
+      const res = await pinLoginHandler(req);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toContain('Formato de PIN inválido');
+    }
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  it('debe rechazar PINs con caracteres especiales o intentos de inyección SQL con código 400', async () => {
+    const dangerousPins = ["12'34", '12;34', '12-34', '12#45', '1234!'];
+
+    for (const pin of dangerousPins) {
+      const req = new Request('http://localhost:3000/api/auth/pin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+
+      const res = await pinLoginHandler(req);
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toContain('Formato de PIN inválido');
+    }
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
 });

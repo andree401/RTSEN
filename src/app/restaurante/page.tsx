@@ -190,11 +190,16 @@ export default function RestaurantePOS() {
           // Fallback a consulta directa si loginWithPin no encuentra rol cajero específico
         }
 
-        const { data, error } = await supabase
+        let empQuery = supabase
           .from('empleados')
           .select('id, nombre, pin, negocio_id')
-          .eq('pin', cleanPin)
-          .maybeSingle();
+          .eq('pin', cleanPin);
+
+        if (ownerId) {
+          empQuery = empQuery.eq('negocio_id', ownerId);
+        }
+
+        const { data, error } = await empQuery.maybeSingle();
 
         if (error) {
           throw error;

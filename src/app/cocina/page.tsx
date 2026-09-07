@@ -27,6 +27,7 @@ export default function CocinaKDS() {
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [dispatchingIds, setDispatchingIds] = useState<Set<string>>(new Set());
+  const dispatchingIdsRef = useRef<Set<string>>(new Set());
 
   const containerRef = useRef<HTMLDivElement>(null);
   const particlesContainerRef = useRef<HTMLDivElement>(null);
@@ -231,8 +232,9 @@ export default function CocinaKDS() {
           isInitialLoad.current = false;
         }
 
-        knownIdsRef.current = new Set(formatted.map(c => c.id));
-        setComandas(formatted);
+        const activeFormatted = formatted.filter(c => !dispatchingIdsRef.current.has(c.id));
+        knownIdsRef.current = new Set(activeFormatted.map(c => c.id));
+        setComandas(activeFormatted);
         setErrorStatus(null);
       }
     } catch (err: unknown) {
@@ -325,7 +327,8 @@ export default function CocinaKDS() {
 
   const despacharFuego = async (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
     // Evitar despachos dobles accidentales
-    if (dispatchingIds.has(id)) return;
+    if (dispatchingIdsRef.current.has(id)) return;
+    dispatchingIdsRef.current.add(id);
     setDispatchingIds(prev => new Set(prev).add(id));
 
     // Sonido triunfal de comanda despachada / lista para servir
@@ -369,6 +372,7 @@ export default function CocinaKDS() {
 
       // 3. Remover comanda de la pantalla
       setTimeout(() => {
+        dispatchingIdsRef.current.delete(id);
         if (!isMountedRef.current) return;
         setComandas(prev => prev.filter(c => c.id !== id));
         setDispatchingIds(prev => {
@@ -378,6 +382,7 @@ export default function CocinaKDS() {
         });
       }, 300);
     } catch (err: unknown) {
+      dispatchingIdsRef.current.delete(id);
       const error = err as Error;
       console.error('Error al despachar comanda:', error);
       if (isMountedRef.current) {

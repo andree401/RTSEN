@@ -66,7 +66,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Check initial session de Supabase (Dueño)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
+      const hasStationEmployee = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('fw_station_employee'));
+      if (session?.user && !hasStationEmployee) {
         setOwnerId(session.user.id);
         setActiveRole('owner');
       }
@@ -75,10 +76,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user?.id) {
+      const hasStationEmployee = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('fw_station_employee'));
+      if (session?.user?.id && !hasStationEmployee) {
         setOwnerId(session.user.id);
         setActiveRole('owner');
-      } else if (!sessionStorage.getItem('fw_station_employee')) {
+      } else if (!hasStationEmployee) {
         setOwnerId(null);
         setActiveRole(null);
       }
@@ -337,17 +339,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     onTimeout: logout,
   });
 
-  if (!isLoaded) return null;
-
-  let pathname = '';
-  try {
-    pathname = usePathname() || '';
-  } catch {
-    pathname = '';
-  }
-
+  const rawPathname = usePathname();
+  const pathname = rawPathname || '';
   const isSysOps = pathname.startsWith('/sys-ops');
   const isLoginPage = pathname.startsWith('/login');
+
+  if (!isLoaded) return null;
 
   return (
     <AppContext.Provider

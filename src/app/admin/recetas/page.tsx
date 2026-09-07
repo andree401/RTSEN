@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import { useAppContext } from '@/context/AppContext';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -39,7 +40,30 @@ type IngredientRow = {
 };
 
 export default function RecetasPanel() {
-  const { ownerId, refreshMenu } = useAppContext();
+  const { ownerId, refreshMenu, activeRole } = useAppContext();
+
+  // Protección de Estación: Solo admin y owner pueden alterar recetas
+  if (activeRole !== 'admin' && activeRole !== 'owner') {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-md w-full text-center shadow-xl">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 text-3xl flex items-center justify-center mx-auto mb-4 border border-rose-200">
+            ⛔
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-1">Acceso Administrativo Restringido</h2>
+          <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+            Tu estación actual ({activeRole ? activeRole.toUpperCase() : 'NO AUTORIZADA'}) no tiene permisos para modificar recetas ni fórmulas de platillos.
+          </p>
+          <Link
+            href={activeRole === 'cajero' ? '/restaurante' : activeRole === 'cocina' ? '/cocina' : '/login'}
+            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-block"
+          >
+            Volver a mi Estación
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [inventarioItems, setInventarioItems] = useState<InventarioItem[]>([]);

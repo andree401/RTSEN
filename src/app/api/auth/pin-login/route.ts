@@ -4,11 +4,18 @@ import { Client } from 'pg';
 export async function POST(req: Request) {
   let client: Client | null = null;
   try {
-    const { pin, role } = await req.json();
+    const { pin, role, negocio_id } = await req.json();
 
     const cleanPin = (pin || '').toString().trim();
     if (!cleanPin) {
       return NextResponse.json({ error: 'PIN requerido' }, { status: 400 });
+    }
+
+    if (!/^\d{5}$/.test(cleanPin)) {
+      return NextResponse.json(
+        { error: 'Formato de PIN inválido: debe contener exactamente 5 dígitos numéricos sin letras ni espacios' },
+        { status: 400 }
+      );
     }
 
     const connectionString = process.env.DATABASE_URL ||
@@ -21,8 +28,13 @@ export async function POST(req: Request) {
     const params: (string | null)[] = [cleanPin];
 
     if (role && role !== 'all') {
-      query += ' AND e.rol = $2';
       params.push(role);
+      query += ` AND e.rol = $${params.length}`;
+    }
+
+    if (negocio_id) {
+      params.push(negocio_id);
+      query += ` AND e.negocio_id = $${params.length}`;
     }
 
     const result = await client.query(query, params);

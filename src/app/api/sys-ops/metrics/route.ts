@@ -82,3 +82,24 @@ export async function POST(req: Request) {
     }
   }
 }
+
+export async function GET() {
+  return NextResponse.json(
+    { error: 'Método no permitido. sys-ops/metrics requiere POST con autorización Zero-Knowledge.' },
+    { status: 405, headers: { Allow: 'POST' } }
+  );
+}
+
+export async function PUT() {
+  return NextResponse.json(
+    { error: 'Método no permitido. sys-ops/metrics requiere POST con autorización Zero-Knowledge.' },
+    { status: 405, headers: { Allow: 'POST' } }
+  );
+}
+
+export async function DELETE() {
+  return NextResponse.json(
+    { error: 'Método no permitido. sys-ops/metrics requiere POST con autorización Zero-Knowledge.' },
+    { status: 405, headers: { Allow: 'POST' } }
+  );
+}
