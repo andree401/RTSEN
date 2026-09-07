@@ -135,6 +135,20 @@ export default function RecetasPanel() {
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Error fetching data:', error);
+      
+      // Auto-recuperación si el token tiene desincronización de reloj o sesión desfasada
+      if (error.message?.includes('JWT') || error.message?.includes('future') || error.message?.includes('token')) {
+        console.warn('Detectado token o reloj desfasado. Refrescando sesión...');
+        const { error: refreshErr } = await supabase.auth.refreshSession();
+        if (!refreshErr) {
+          // Reintentar en 500ms tras el refresco
+          setTimeout(() => {
+            fetchData();
+          }, 500);
+          return;
+        }
+      }
+      
       alert('Error al cargar datos: ' + error.message);
     } finally {
       setLoading(false);

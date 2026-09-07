@@ -269,6 +269,19 @@ export default function InventarioPanel() {
     } catch (err: unknown) {
       const error = err as Error;
       console.error('Error fetching inventario:', error);
+
+      // Auto-recuperación si el token tiene desincronización de reloj o sesión desfasada
+      if (error.message?.includes('JWT') || error.message?.includes('future') || error.message?.includes('token')) {
+        console.warn('Detectado token o reloj desfasado en inventario. Refrescando sesión...');
+        const { error: refreshErr } = await supabase.auth.refreshSession();
+        if (!refreshErr) {
+          setTimeout(() => {
+            fetchInventario();
+          }, 500);
+          return;
+        }
+      }
+
       alert('Error al cargar el inventario: ' + error.message);
     } finally {
       setLoading(false);
