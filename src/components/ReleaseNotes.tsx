@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import pkg from '../../package.json';
-
-const CURRENT_VERSION = pkg.version;
+const CURRENT_VERSION = '5.0.0';
 
 type VersionRecord = {
   version: string;

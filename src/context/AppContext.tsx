@@ -251,6 +251,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sessionStorage.removeItem('fw_owner_authenticated');
         sessionStorage.removeItem('fw_station_employee');
         sessionStorage.removeItem('pos_cashier_session');
+        
+        // Forzar limpieza extrema de todos los tokens de Supabase por si la red falla
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            localStorage.removeItem(key);
+          }
+        });
       }
     } catch {}
 
