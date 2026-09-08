@@ -27,6 +27,7 @@ export default function ClientHeader() {
   const handleLogout = async () => {
     try {
       await logout();
+      window.location.href = '/';
     } catch (e) {
       console.error('Error logging out:', e);
     }

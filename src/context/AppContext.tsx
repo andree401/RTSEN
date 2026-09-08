@@ -253,7 +253,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sessionStorage.removeItem('pos_cashier_session');
       }
     } catch {}
-    await supabase.auth.signOut();
+
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Supabase signOut error:', e);
+    }
+    
     setOwnerId(null);
     setActiveRole(null);
     setCurrentEmployee(null);
