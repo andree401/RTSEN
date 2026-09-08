@@ -18,16 +18,16 @@ const VERSION_HISTORY: VersionRecord[] = [
   {
     version: 'v5.0.0',
     tag: 'Actual',
-    title: 'Enterprise: PWA, Multi-Tenant RLS & Facturación Stripe',
+    title: 'Enterprise: PWA, Multi-Tenant RLS, Stripe & Modo Estación',
     date: '07 Sep 2026',
     badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-300',
     highlights: [
+      '💻 ¡NUEVO! Modo Estación de Trabajo: Vincula tablets o PCs específicas a tu restaurante para evitar cruces de sesión. Un salto masivo de seguridad Multi-Tenant.',
       '💳 Módulo de Facturación y Suscripciones con Stripe SDK: Planes Pro Mensual y Anual con gestión en autoservicio.',
-      '🎁 Renovación de Prueba Gratuita con 1 clic para seguir puliendo el sistema sin cobros forzados.',
       '📱 Progressive Web App (PWA) instalable en Android, iOS y Desktop con soporte offline y Service Worker.',
       '🔒 Aislamiento criptográfico estricto Multi-Tenant (PostgreSQL RLS) a nivel de base de datos en Supabase.',
-      '🍅 Conversión culinaria dual de unidades en inventario (Kilos ↔ Piezas unificadas en tiempo real).',
       '👑 Portal Maestro del Dueño con Zero-Trust y PIN maestro de supervisión central.',
+      '🧪 Estabilidad Extrema: 80 rondas de auditorías automáticas (QA multi-agente) garantizando 0 fallos de rendimiento y cero cuellos de botella en la base de datos.',
     ],
   },
   {
