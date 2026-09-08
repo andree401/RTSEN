@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Client } from 'pg';
 import { isSubscriptionActive } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
 
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Supabase admin env vars missing');
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export async function GET(req: Request) {
-  let pgClient: Client | null = null;
   try {
     const authHeader = req.headers.get('authorization');
     let token: string | null = null;
@@ -33,27 +40,18 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Sesión no válida o expirada' }, { status: 401 });
     }
 
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      return NextResponse.json({ error: 'DATABASE_URL no configurada' }, { status: 500 });
-    }
+    const supabaseAdmin = getSupabaseAdmin();
 
-    pgClient = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
-    await pgClient.connect();
+    const { data: negocio, error } = await supabaseAdmin
+      .from('negocios')
+      .select('id, nombre, owner_email, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_plan, current_period_end')
+      .eq('id', user.id)
+      .single();
 
-    const res = await pgClient.query(
-      `SELECT id, nombre, owner_email, stripe_customer_id, stripe_subscription_id, 
-              subscription_status, subscription_plan, current_period_end 
-       FROM public.negocios 
-       WHERE id = $1 LIMIT 1`,
-      [user.id]
-    );
-
-    if (res.rows.length === 0) {
+    if (error || !negocio) {
       return NextResponse.json({ error: 'Negocio no encontrado' }, { status: 404 });
     }
 
-    const negocio = res.rows[0];
     const active = isSubscriptionActive(negocio.subscription_status, negocio.current_period_end);
 
     return NextResponse.json({
@@ -67,9 +65,5 @@ export async function GET(req: Request) {
   } catch (err: any) {
     console.error('Error al consultar estado de suscripción:', err);
     return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 });
-  } finally {
-    if (pgClient) {
-      await pgClient.end().catch(() => {});
-    }
   }
 }

@@ -39,6 +39,9 @@ type AppContextType = {
   updateDish: (id: string, updatedDish: Omit<Dish, 'id'>) => Promise<void>;
   deleteDish: (id: string) => Promise<void>;
   recordFinance: (amount: number, description: string) => Promise<void>;
+  linkDeviceToTenant: (tenantId: string) => void;
+  getLinkedTenant: () => string | null;
+  unlinkDevice: () => void;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -187,10 +190,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithPin = async (pin: string, expectedRole?: string): Promise<EmployeeSession> => {
+    let linkedTenantId: string | null = null;
+    try {
+      linkedTenantId = localStorage.getItem('fw_tenant_id');
+    } catch {}
+
+    if (!linkedTenantId) {
+      throw new Error('Dispositivo no vinculado. Inicia sesión como Dueño y activa el Modo Estación en la configuración.');
+    }
+
     const res = await fetch('/api/auth/pin-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin, role: expectedRole })
+      body: JSON.stringify({ pin, role: expectedRole, negocio_id: linkedTenantId })
     });
 
     const data = await res.json();
@@ -201,6 +213,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const employee: EmployeeSession = data.employee;
     setStationSession(employee);
     return employee;
+  };
+
+  const linkDeviceToTenant = (tenantId: string) => {
+    try {
+      localStorage.setItem('fw_tenant_id', tenantId);
+    } catch {}
+  };
+
+  const getLinkedTenant = (): string | null => {
+    try {
+      return localStorage.getItem('fw_tenant_id');
+    } catch {
+      return null;
+    }
+  };
+
+  const unlinkDevice = () => {
+    try {
+      localStorage.removeItem('fw_tenant_id');
+    } catch {}
   };
 
   const setStationSession = (employee: EmployeeSession) => {
@@ -378,6 +410,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateDish,
         deleteDish,
         recordFinance,
+        linkDeviceToTenant,
+        getLinkedTenant,
+        unlinkDevice,
       }}
     >
       {!ownerId && !isSysOps && !isLoginPage ? (

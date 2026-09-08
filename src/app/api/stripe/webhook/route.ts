@@ -1,13 +1,21 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { Client } from 'pg';
 import Stripe from 'stripe';
 import { getStripeServer } from '@/lib/stripe';
+import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Supabase admin env vars missing');
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export async function POST(req: Request) {
-  let pgClient: Client | null = null;
   const rawBody = await req.text();
   const signature = (await headers()).get('stripe-signature');
 
@@ -20,7 +28,6 @@ export async function POST(req: Request) {
     if (webhookSecret && signature) {
       event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } else {
-      // Fallback para entornos de desarrollo / pruebas locales sin webhook secret estricto
       event = JSON.parse(rawBody) as Stripe.Event;
     }
   } catch (err: any) {
@@ -29,10 +36,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const connectionString = process.env.DATABASE_URL;
-    if (connectionString) {
-      pgClient = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
-      await pgClient.connect();
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = getSupabaseAdmin();
+    } catch {
+      supabaseAdmin = null;
     }
 
     switch (event.type) {
@@ -42,16 +50,16 @@ export async function POST(req: Request) {
         const subscriptionId = session.subscription as string;
         const customerId = session.customer as string;
 
-        if (pgClient && negocioId) {
-          await pgClient.query(
-            `UPDATE public.negocios 
-             SET stripe_customer_id = COALESCE($1, stripe_customer_id),
-                 stripe_subscription_id = COALESCE($2, stripe_subscription_id),
-                 subscription_status = 'active',
-                 subscription_plan = COALESCE($3, subscription_plan)
-             WHERE id = $4`,
-            [customerId, subscriptionId, session.metadata?.plan || 'monthly', negocioId]
-          );
+        if (supabaseAdmin && negocioId) {
+          const { data: neg } = await supabaseAdmin.from('negocios').select('*').eq('id', negocioId).single();
+          if (neg) {
+            await supabaseAdmin.from('negocios').update({
+              stripe_customer_id: customerId || neg.stripe_customer_id,
+              stripe_subscription_id: subscriptionId || neg.stripe_subscription_id,
+              subscription_status: 'active',
+              subscription_plan: session.metadata?.plan || neg.subscription_plan || 'monthly'
+            }).eq('id', negocioId);
+          }
         }
         break;
       }
@@ -63,15 +71,12 @@ export async function POST(req: Request) {
         const status = subscription.status; // 'active', 'past_due', 'canceled', 'unpaid', etc.
         const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000).toISOString();
 
-        if (pgClient && customerId) {
-          await pgClient.query(
-            `UPDATE public.negocios 
-             SET subscription_status = $1,
-                 stripe_subscription_id = $2,
-                 current_period_end = $3
-             WHERE stripe_customer_id = $4`,
-            [status, subscription.id, currentPeriodEnd, customerId]
-          );
+        if (supabaseAdmin && customerId) {
+          await supabaseAdmin.from('negocios').update({
+            subscription_status: status,
+            stripe_subscription_id: subscription.id,
+            current_period_end: currentPeriodEnd
+          }).eq('stripe_customer_id', customerId);
         }
         break;
       }
@@ -80,13 +85,10 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
 
-        if (pgClient && customerId) {
-          await pgClient.query(
-            `UPDATE public.negocios 
-             SET subscription_status = 'active'
-             WHERE stripe_customer_id = $1`,
-            [customerId]
-          );
+        if (supabaseAdmin && customerId) {
+          await supabaseAdmin.from('negocios').update({
+            subscription_status: 'active'
+          }).eq('stripe_customer_id', customerId);
         }
         break;
       }
@@ -95,13 +97,10 @@ export async function POST(req: Request) {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
 
-        if (pgClient && customerId) {
-          await pgClient.query(
-            `UPDATE public.negocios 
-             SET subscription_status = 'past_due'
-             WHERE stripe_customer_id = $1`,
-            [customerId]
-          );
+        if (supabaseAdmin && customerId) {
+          await supabaseAdmin.from('negocios').update({
+            subscription_status: 'past_due'
+          }).eq('stripe_customer_id', customerId);
         }
         break;
       }
@@ -115,9 +114,5 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error('Error al procesar evento del webhook:', err);
     return NextResponse.json({ error: 'Error interno en procesamiento' }, { status: 500 });
-  } finally {
-    if (pgClient) {
-      await pgClient.end().catch(() => {});
-    }
   }
 }

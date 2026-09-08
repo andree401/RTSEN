@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     }
     if (!/^\d{5}$/.test(cleanPin)) {
       return NextResponse.json(
-        { error: 'El PIN debe ser de exactamente 5 dígitos numéricos' },
+        { error: 'Formato de PIN inválido' },
         { status: 400 }
       );
     }

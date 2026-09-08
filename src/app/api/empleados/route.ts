@@ -74,21 +74,6 @@ export async function POST(req: Request) {
       pin = Math.floor(10000 + Math.random() * 90000).toString();
     }
 
-    // Check duplicate PIN in the same negocio_id
-    const { data: existingPins, error: checkError } = await supabase
-      .from('empleados')
-      .select('id')
-      .eq('negocio_id', negocio_id)
-      .eq('pin', pin);
-
-    if (checkError) {
-      return NextResponse.json({ error: checkError.message }, { status: 500 });
-    }
-
-    if (existingPins && existingPins.length > 0) {
-      return NextResponse.json({ error: 'El PIN ya está en uso en este negocio' }, { status: 400 });
-    }
-
     const { data, error } = await supabase
       .from('empleados')
       .insert([{ nombre, rol, pin, negocio_id }])
@@ -96,6 +81,9 @@ export async function POST(req: Request) {
       .single();
 
     if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json({ error: 'El PIN ya está en uso en este negocio' }, { status: 400 });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -171,22 +159,6 @@ export async function PATCH(req: Request) {
       if (!/^\d{5}$/.test(body.pin)) {
         return NextResponse.json({ error: 'PIN debe ser exactamente de 5 dígitos' }, { status: 400 });
       }
-      
-      const { data: existingPins, error: checkError } = await supabase
-        .from('empleados')
-        .select('id')
-        .eq('negocio_id', negocio_id)
-        .eq('pin', body.pin)
-        .neq('id', id);
-
-      if (checkError) {
-        return NextResponse.json({ error: checkError.message }, { status: 500 });
-      }
-
-      if (existingPins && existingPins.length > 0) {
-        return NextResponse.json({ error: 'El PIN ya está en uso en este negocio' }, { status: 400 });
-      }
-
       updateData.pin = body.pin;
     }
     if (body.rol) updateData.rol = body.rol;
@@ -204,6 +176,9 @@ export async function PATCH(req: Request) {
       .single();
 
     if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json({ error: 'El PIN ya está en uso en este negocio' }, { status: 400 });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 

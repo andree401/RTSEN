@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
-import { Client } from 'pg';
 import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
+
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error('Supabase admin env vars not configured');
+  }
+  return createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
 
 export async function POST(req: Request) {
-  let client: Client | null = null;
   try {
     const authHeader = req.headers.get('x-superadmin-secret') || '';
     const body = await req.json().catch(() => ({}));
@@ -20,74 +30,78 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      console.error('DATABASE_URL no configurada');
-      return NextResponse.json({ error: 'Error de configuración del servidor' }, { status: 500 });
-    }
+    const supabase = getSupabaseAdmin();
 
-    client = new Client({ connectionString });
-    await client.connect();
-
-    // Métricas agregadas de toda la plataforma
-    const [negsRes, empsRes, cmdRes, txRes, topNegocios] = await Promise.all([
-      client.query('SELECT count(*) as total FROM public.negocios;'),
-      client.query('SELECT count(*) as total, count(CASE WHEN rol = \'cajero\' THEN 1 END) as cajeros, count(CASE WHEN rol = \'admin\' THEN 1 END) as admins, count(CASE WHEN rol = \'cocina\' THEN 1 END) as cocineros FROM public.empleados;'),
-      client.query('SELECT count(*) as total, coalesce(sum(total), 0) as volumen_comandas FROM public.comandas;'),
-      client.query('SELECT count(*) as total, coalesce(sum(CASE WHEN tipo = \'Ingreso\' THEN monto ELSE 0 END), 0) as ingresos_globales, coalesce(sum(CASE WHEN tipo = \'Gasto\' THEN monto ELSE 0 END), 0) as gastos_globales FROM public.finanzas_registros;'),
-      client.query(`
-        SELECT 
-          n.id, 
-          n.nombre, 
-          n.owner_email, 
-          n.created_at,
-          (SELECT count(*) FROM public.comandas c WHERE c.negocio_id = n.id) as comandas_count,
-          (SELECT count(*) FROM public.empleados e WHERE e.negocio_id = n.id) as empleados_count,
-          (SELECT count(*) FROM public.menu_items m WHERE m.negocio_id = n.id) as menu_count
-        FROM public.negocios n
-        ORDER BY n.created_at DESC
-        LIMIT 50;
-      `)
+    const [
+      { count: totalNegocios },
+      { data: empleadosData },
+      { data: comandasData },
+      { data: finanzasData },
+      { data: topNegociosData }
+    ] = await Promise.all([
+      supabase.from('negocios').select('*', { count: 'exact', head: true }),
+      supabase.from('empleados').select('rol'),
+      supabase.from('comandas').select('total'),
+      supabase.from('finanzas_registros').select('tipo, monto'),
+      supabase.from('negocios').select('id, nombre, owner_email, created_at').order('created_at', { ascending: false }).limit(50)
     ]);
 
-    const totalNegocios = Number(negsRes.rows[0]?.total || 0);
-    const totalEmpleados = Number(empsRes.rows[0]?.total || 0);
-    const totalComandas = Number(cmdRes.rows[0]?.total || 0);
-    const volumenComandas = Number(cmdRes.rows[0]?.volumen_comandas || 0);
-    const totalFinanzas = Number(txRes.rows[0]?.total || 0);
-    const ingresosGlobales = Number(txRes.rows[0]?.ingresos_globales || 0);
-    const gastosGlobales = Number(txRes.rows[0]?.gastos_globales || 0);
+    const totalEmpleados = empleadosData?.length || 0;
+    const empleadosDesglose = { cajeros: 0, admins: 0, cocineros: 0 };
+    empleadosData?.forEach(e => {
+      if (e.rol === 'cajero') empleadosDesglose.cajeros++;
+      if (e.rol === 'admin') empleadosDesglose.admins++;
+      if (e.rol === 'cocina') empleadosDesglose.cocineros++;
+    });
+
+    const totalComandas = comandasData?.length || 0;
+    const volumenComandas = comandasData?.reduce((acc, c) => acc + (Number(c.total) || 0), 0) || 0;
+
+    const totalFinanzas = finanzasData?.length || 0;
+    let ingresosGlobales = 0;
+    let gastosGlobales = 0;
+    finanzasData?.forEach(f => {
+      if (f.tipo === 'Ingreso') ingresosGlobales += Number(f.monto) || 0;
+      if (f.tipo === 'Gasto') gastosGlobales += Number(f.monto) || 0;
+    });
+
+    // Para comandas_count, empleados_count y menu_count necesitamos hacer map
+    // Para no exceder el timeout, haremos conteos rápidos o dejaremos en 0 si es complejo,
+    // pero idealmente deberíamos tener una vista. Haremos subconsultas con Promise.all
+    const restaurantes = await Promise.all((topNegociosData || []).map(async (n) => {
+      const [{ count: cCount }, { count: eCount }, { count: mCount }] = await Promise.all([
+        supabase.from('comandas').select('*', { count: 'exact', head: true }).eq('negocio_id', n.id),
+        supabase.from('empleados').select('*', { count: 'exact', head: true }).eq('negocio_id', n.id),
+        supabase.from('menu_items').select('*', { count: 'exact', head: true }).eq('negocio_id', n.id)
+      ]);
+      return {
+        ...n,
+        comandas_count: cCount || 0,
+        empleados_count: eCount || 0,
+        menu_count: mCount || 0
+      };
+    }));
 
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       summary: {
-        totalNegocios,
+        totalNegocios: totalNegocios || 0,
         totalEmpleados,
-        empleadosDesglose: {
-          cajeros: Number(empsRes.rows[0]?.cajeros || 0),
-          admins: Number(empsRes.rows[0]?.admins || 0),
-          cocineros: Number(empsRes.rows[0]?.cocineros || 0)
-        },
+        empleadosDesglose,
         totalComandas,
         volumenComandas,
         totalFinanzas,
         ingresosGlobales,
         gastosGlobales
       },
-      restaurantes: topNegocios.rows
+      restaurantes
     });
 
   } catch (error: unknown) {
     const err = error as Error;
     console.error('Error en /api/sys-ops/metrics:', err);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
-  } finally {
-    if (client) {
-      try {
-        await client.end();
-      } catch {}
-    }
   }
 }
 

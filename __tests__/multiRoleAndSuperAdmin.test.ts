@@ -5,8 +5,10 @@ import { POST as superAdminHandler } from '../src/app/api/sys-ops/metrics/route'
 // Asegurar variables de entorno requeridas por los endpoints (la conexión real es mockeada)
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://mock:mock@localhost:5432/mock';
 process.env.SUPERADMIN_SECRET_KEY = process.env.SUPERADMIN_SECRET_KEY || '0002341';
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://mock-supabase.local';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-key';
 
-// Mock de pg Client
+// Mock de pg Client (used by metrics)
 const mockQuery = vi.fn();
 const mockConnect = vi.fn().mockResolvedValue(undefined);
 const mockEnd = vi.fn().mockResolvedValue(undefined);
@@ -22,6 +24,23 @@ vi.mock('pg', () => {
     }),
   };
 });
+
+// Mock Supabase
+const mockMaybeSingle = vi.fn();
+const mockLimit = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+const mockOrder = vi.fn().mockReturnValue({ limit: mockLimit });
+const mockEq4 = vi.fn().mockReturnValue({ limit: mockLimit, maybeSingle: mockMaybeSingle, order: mockOrder });
+const mockEq3 = vi.fn().mockReturnValue({ eq: mockEq4, limit: mockLimit, maybeSingle: mockMaybeSingle, order: mockOrder });
+const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3, limit: mockLimit, maybeSingle: mockMaybeSingle, order: mockOrder });
+const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2, limit: mockLimit, maybeSingle: mockMaybeSingle, order: mockOrder });
+const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1, order: mockOrder, limit: mockLimit });
+const mockFrom = vi.fn().mockReturnValue({ select: mockSelect, update: vi.fn(), delete: vi.fn() });
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({
+    from: mockFrom,
+  })),
+}));
 
 describe('Sistema Multi-Rol: Endpoint /api/auth/pin-login', () => {
   beforeEach(() => {
@@ -43,7 +62,7 @@ describe('Sistema Multi-Rol: Endpoint /api/auth/pin-login', () => {
   });
 
   it('debe rechazar con 401 si el PIN no existe en la base de datos', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] });
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
 
     const req = new Request('http://localhost:3000/api/auth/pin-login', {
       method: 'POST',
@@ -59,17 +78,16 @@ describe('Sistema Multi-Rol: Endpoint /api/auth/pin-login', () => {
   });
 
   it('debe autenticar con éxito a un empleado si el PIN es correcto', async () => {
-    mockQuery.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 'emp-123',
-          nombre: 'María Cajera',
-          pin: '12345',
-          negocio_id: 'negocio-uuid-1',
-          rol: 'cajero',
-          restaurante: 'Pizzería Napolitana',
-        },
-      ],
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        id: 'emp-123',
+        nombre: 'María Cajera',
+        pin: '12345',
+        negocio_id: 'negocio-uuid-1',
+        rol: 'cajero',
+        negocios: { nombre: 'Pizzería Napolitana' },
+      },
+      error: null,
     });
 
     const req = new Request('http://localhost:3000/api/auth/pin-login', {
@@ -109,25 +127,30 @@ describe('Portal Secreto SuperAdmin: Endpoint /api/sys-ops/metrics', () => {
   });
 
   it('debe retornar métricas globales de toda la plataforma si se provee la clave correcta', async () => {
-    // Mock responses for the 5 queries in Promise.all
-    mockQuery
-      .mockResolvedValueOnce({ rows: [{ total: '14' }] }) // negocios
-      .mockResolvedValueOnce({ rows: [{ total: '8', cajeros: '5', admins: '2', cocineros: '1' }] }) // empleados
-      .mockResolvedValueOnce({ rows: [{ total: '35', volumen_comandas: '450000' }] }) // comandas
-      .mockResolvedValueOnce({ rows: [{ total: '50', ingresos_globales: '750000', gastos_globales: '200000' }] }) // finanzas
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: 'negocio-1',
-            nombre: 'Café Central',
-            owner_email: 'cafe@owner.com',
-            created_at: new Date().toISOString(),
-            comandas_count: '15',
-            empleados_count: '3',
-            menu_count: '20',
-          },
-        ],
-      }); // topNegocios
+    // Mock responses for the 5 global queries
+    mockSelect
+      .mockResolvedValueOnce({ count: 14, data: null, error: null }) // negocios count
+      .mockResolvedValueOnce({ data: [ { rol: 'cajero' }, { rol: 'cajero' }, { rol: 'cajero' }, { rol: 'cajero' }, { rol: 'cajero' }, { rol: 'admin' }, { rol: 'admin' }, { rol: 'cocina' } ], error: null }) // empleados
+      .mockResolvedValueOnce({ data: Array(34).fill({ total: 0 }).concat({ total: 450000 }), error: null }) // comandas
+      .mockResolvedValueOnce({ data: [ { tipo: 'Ingreso', monto: 750000 }, { tipo: 'Gasto', monto: 200000 } ], error: null }); // finanzas
+      
+    mockLimit.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'negocio-1',
+          nombre: 'Café Central',
+          owner_email: 'cafe@owner.com',
+          created_at: new Date().toISOString(),
+        },
+      ],
+      error: null
+    }); // topNegocios
+
+    // Mock responses for the 3 subqueries per topNegocio
+    mockEq1
+      .mockResolvedValueOnce({ count: 15, data: null, error: null }) // comandas count
+      .mockResolvedValueOnce({ count: 3, data: null, error: null }) // empleados count
+      .mockResolvedValueOnce({ count: 20, data: null, error: null }); // menu count
 
     const validKey = process.env.SUPERADMIN_SECRET_KEY || '0002341';
 
@@ -224,7 +247,7 @@ describe('Auditoría Edge Cases: Validación Estricta de PIN (5 Dígitos Numéri
       expect(json.error).toContain('Formato de PIN inválido');
     }
     // No debe consultar base de datos si el formato es inválido
-    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockMaybeSingle).not.toHaveBeenCalled();
   });
 
   it('debe rechazar PINs con espacios intermedios o espacios internos con código 400', async () => {

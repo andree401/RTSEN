@@ -59,7 +59,7 @@ export default function OwnerMasterPortal() {
   const [addEmpError, setAddEmpError] = useState<string | null>(null);
   const [addEmpSuccess, setAddEmpSuccess] = useState<string | null>(null);
 
-  const [masterPin, setMasterPin] = useState<string>('0000');
+  const [masterPin, setMasterPin] = useState<string | null>(null);
   const [changePinInput, setChangePinInput] = useState<string>('');
   const [changePinLoading, setChangePinLoading] = useState<boolean>(false);
   const [changePinMsg, setChangePinMsg] = useState<string | null>(null);
@@ -161,8 +161,33 @@ export default function OwnerMasterPortal() {
     }
   }, []);
 
-  const handleMasterUnlock = (e: React.FormEvent) => {
+  const handleMasterUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!masterPin) {
+      if (pinInput.trim().length < 4) {
+        setPinError('El PIN debe tener al menos 4 dígitos.');
+        return;
+      }
+      try {
+        const { error } = await supabase
+          .from('negocios')
+          .update({ pin_maestro: pinInput.trim() })
+          .eq('id', ownerId!);
+        if (error) throw error;
+        
+        setMasterPin(pinInput.trim());
+        setIsMasterAuthenticated(true);
+        setPinError(null);
+        try {
+          sessionStorage.setItem('fw_owner_authenticated', 'true');
+        } catch {}
+      } catch (err) {
+        setPinError('Error al configurar el PIN maestro inicial.');
+      }
+      return;
+    }
+
     if (pinInput.trim() === masterPin) {
       setIsMasterAuthenticated(true);
       setPinError(null);
@@ -227,7 +252,7 @@ export default function OwnerMasterPortal() {
       if (negocioData?.pin_maestro) {
         setMasterPin(negocioData.pin_maestro as string);
       } else {
-        setMasterPin('0000');
+        setMasterPin(null);
       }
 
       // 2. Platillos del menú
@@ -312,7 +337,9 @@ export default function OwnerMasterPortal() {
             Portal Central del Dueño
           </h2>
           <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-            Esta zona contiene métricas confidenciales y credenciales de personal. Ingrese el PIN Maestro de Propietario para desbloquear.
+            {masterPin
+              ? 'Esta zona contiene métricas confidenciales y credenciales de personal. Ingrese el PIN Maestro de Propietario para desbloquear.'
+              : 'Esta zona contiene métricas confidenciales. Cree su PIN Maestro de Propietario para continuar y proteger su panel.'}
           </p>
 
           <form onSubmit={handleMasterUnlock} className="space-y-4">
@@ -323,7 +350,7 @@ export default function OwnerMasterPortal() {
                 maxLength={8}
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
-                placeholder="PIN Maestro (ej. 0000)"
+                placeholder={masterPin ? "PIN Maestro" : "Cree su PIN Maestro (min. 4)"}
                 autoFocus
                 className="w-full text-center text-xl tracking-[0.3em] font-mono bg-slate-950 border border-slate-700 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-white p-3 rounded-xl outline-none transition-all placeholder:text-slate-600 placeholder:text-xs placeholder:tracking-normal"
               />
@@ -338,7 +365,7 @@ export default function OwnerMasterPortal() {
               type="submit"
               className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-amber-600/20 active:scale-98 cursor-pointer"
             >
-              Desbloquear Supervisión Central
+              {masterPin ? 'Desbloquear Supervisión Central' : 'Establecer PIN y Desbloquear'}
             </button>
           </form>
 
@@ -444,11 +471,6 @@ export default function OwnerMasterPortal() {
         <section className="bg-amber-950/30 border border-amber-700/40 rounded-2xl p-5">
           <h3 className="text-sm font-bold text-amber-300 mb-3 flex items-center gap-2">
             🔑 Cambiar PIN Maestro
-            {masterPin === '0000' && (
-              <span className="text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full">
-                ⚠️ PIN inicial — Cámbialo
-              </span>
-            )}
           </h3>
           <form onSubmit={handleChangeMasterPin} className="flex gap-2">
             <input

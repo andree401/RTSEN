@@ -9,7 +9,22 @@ import { useAppContext } from '@/context/AppContext';
 
 export default function ConfiguracionPage() {
   const router = useRouter();
-  const { logout } = useAppContext();
+  const { logout, linkDeviceToTenant, unlinkDevice } = useAppContext();
+
+  const handleLinkDevice = async () => {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user.id) {
+      linkDeviceToTenant(data.session.user.id);
+      alert('✅ Dispositivo vinculado exitosamente. Tus empleados ya pueden iniciar sesión con su PIN en este dispositivo.');
+      window.location.reload();
+    }
+  };
+
+  const handleUnlinkDevice = () => {
+    unlinkDevice();
+    alert('🔌 Dispositivo desvinculado.');
+    window.location.reload();
+  };
 
   const handleDeleteAccount = async () => {
     try {
@@ -56,6 +71,29 @@ export default function ConfiguracionPage() {
       
       {/* Módulo de Suscripción y Facturación */}
       <BillingManager />
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <h2 className="text-xl font-semibold mb-2 text-slate-800">Modo Estación (Punto de Venta)</h2>
+        <p className="text-slate-600 mb-6 text-sm">
+          Si este dispositivo va a ser usado por tus empleados (cajeros, cocineros, etc.), debes vincularlo a tu restaurante. Así el sistema sabrá a qué negocio pertenecen los PINs ingresados en esta pantalla.
+        </p>
+
+        <div className="flex gap-4 items-center">
+          <button
+            onClick={handleLinkDevice}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition"
+          >
+            Vincular este dispositivo
+          </button>
+
+          <button
+            onClick={handleUnlinkDevice}
+            className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg font-medium hover:bg-slate-200 transition"
+          >
+            Desvincular
+          </button>
+        </div>
+      </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
         <h2 className="text-xl font-semibold mb-2 text-slate-800">Ajustes de la cuenta</h2>

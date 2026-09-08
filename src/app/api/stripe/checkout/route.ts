@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Client } from 'pg';
 import { getStripeServer, PLANS, PlanKey } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
 
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Supabase admin env vars missing');
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export async function POST(req: Request) {
-  let pgClient: Client | null = null;
   try {
     const authHeader = req.headers.get('authorization');
     let token: string | null = null;
@@ -39,24 +46,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Plan seleccionado no válido' }, { status: 400 });
     }
 
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      return NextResponse.json({ error: 'DATABASE_URL no configurada' }, { status: 500 });
-    }
+    const supabaseAdmin = getSupabaseAdmin();
 
-    pgClient = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
-    await pgClient.connect();
+    const { data: negocio, error: negError } = await supabaseAdmin
+      .from('negocios')
+      .select('id, nombre, owner_email, stripe_customer_id')
+      .eq('id', user.id)
+      .single();
 
-    const resNegocio = await pgClient.query(
-      'SELECT id, nombre, owner_email, stripe_customer_id FROM public.negocios WHERE id = $1 LIMIT 1',
-      [user.id]
-    );
-
-    if (resNegocio.rows.length === 0) {
+    if (negError || !negocio) {
       return NextResponse.json({ error: 'Registro de negocio no encontrado' }, { status: 404 });
     }
 
-    const negocio = resNegocio.rows[0];
     let customerId = negocio.stripe_customer_id;
 
     const stripe = getStripeServer();
@@ -72,10 +73,10 @@ export async function POST(req: Request) {
       });
       customerId = customer.id;
 
-      await pgClient.query(
-        'UPDATE public.negocios SET stripe_customer_id = $1 WHERE id = $2',
-        [customerId, user.id]
-      );
+      await supabaseAdmin
+        .from('negocios')
+        .update({ stripe_customer_id: customerId })
+        .eq('id', user.id);
     }
 
     const origin = req.headers.get('origin') || 'http://localhost:3000';
@@ -117,9 +118,5 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error('Error en checkout session:', err);
     return NextResponse.json({ error: err.message || 'Error interno del servidor' }, { status: 500 });
-  } finally {
-    if (pgClient) {
-      await pgClient.end().catch(() => {});
-    }
   }
 }
