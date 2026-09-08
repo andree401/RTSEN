@@ -14,18 +14,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const ownerRoutes = ['/owner', '/configuracion'];
-  if (ownerRoutes.some(r => pathname.startsWith(r))) {
-    const hasSupabaseSession = request.cookies.getAll().some(
-      c => c.name.startsWith('sb-') && c.name.endsWith('-auth-token')
-    );
-    if (!hasSupabaseSession) {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-
   return NextResponse.next();
 }
 
