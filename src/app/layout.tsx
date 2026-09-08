@@ -57,10 +57,10 @@ export default function RootLayout({
             {children}
           </main>
           <ContextualFooter />
+          <ReleaseNotes />
+          <PwaRegister />
           <SubscriptionGuardModal />
         </AppProvider>
-        <ReleaseNotes />
-        <PwaRegister />
       </body>
     </html>
   );
