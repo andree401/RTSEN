@@ -4,7 +4,7 @@ Registro cronológico estricto y forense basado en los commits, tags y despliegu
 
 ---
 
-## [5.1.0] — Intervención v5 — 2026-09-07
+## [5.0.0] — Intervención v5 — 2026-09-07
 
 ### 🔒 Seguridad
 - PIN Maestro del Portal del Dueño ya no está hardcodeado — persiste en `negocios.pin_maestro`

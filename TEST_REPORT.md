@@ -1,4 +1,4 @@
-# Reporte de Testing Completo — RTSEN ERP v5.1
+# Reporte de Testing Completo — RTSEN ERP v5.0.0
 Fecha: 2026-09-07
 
 ## Resumen
