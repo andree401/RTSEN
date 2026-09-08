@@ -52,6 +52,26 @@ export default function PwaRegister() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     window.addEventListener('release_notes_closed', handleReleaseNotesClosed);
 
+    // 4. Lógica para iOS / Safari (donde beforeinstallprompt NO existe)
+    const checkSafariFallback = () => {
+      const dismissed = localStorage.getItem('pwa_install_dismissed');
+      if (dismissed) return;
+      
+      const lastSeenVersion = localStorage.getItem('last_seen_version');
+      const isReleaseNotesPending = lastSeenVersion !== '5.0.0';
+      
+      if (!isReleaseNotesPending) {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+        
+        if (isIOS || isSafari) {
+          setTimeout(() => setShowInstallBanner(true), 1500);
+        }
+      }
+    };
+
+    checkSafariFallback();
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       window.removeEventListener('release_notes_closed', handleReleaseNotesClosed);
