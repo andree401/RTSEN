@@ -59,7 +59,10 @@ export default function PwaRegister() {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      alert("En Safari/iOS: Toca el ícono de Compartir (cuadrado con flecha hacia arriba) y luego selecciona 'Agregar a Inicio'.");
+      return;
+    }
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
@@ -92,7 +95,7 @@ export default function PwaRegister() {
           onClick={handleInstallClick}
           className="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer"
         >
-          Instalar
+          {deferredPrompt ? 'Instalar' : 'Guía iOS'}
         </button>
         <button
           onClick={handleDismiss}
